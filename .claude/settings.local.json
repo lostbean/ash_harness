@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:hex.pm)",
+      "WebFetch(domain:hexdocs.pm)",
+      "Bash(gh api *)",
+      "Bash(npx openspec *)"
+    ]
+  }
+}
