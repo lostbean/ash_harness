@@ -30,16 +30,8 @@ defmodule TauBenchAirline.Agent do
   end
 
   behavior do
-    # v0.1.1: `confirm_before` is declared per the spec, but the
-    # auto-approval path in `AshHarness.Eval.Runner` currently
-    # surfaces the confirmation as an error tool result rather than a
-    # `:halt` for the gated nodes used during cassette recording; the
-    # mutating actions are therefore listed under `auto_execute` here
-    # so the eval can drive them end-to-end. Reasoning is still required
-    # via `require_reasoning_for` below, preserving the auditability
-    # story while a follow-up change wires resume → gated-node retry
-    # for the eval runner.
-    auto_execute([:read, :search, :change_flight, :cancel])
+    auto_execute([:read, :search])
+    confirm_before([:change_flight, :cancel])
 
     strategy(
       :read_before_write,

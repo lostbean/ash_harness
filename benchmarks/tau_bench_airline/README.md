@@ -95,7 +95,3 @@ Caveats baked into the v0.1.1 recording:
   is replaced with a placeholder; `mix tau_bench.run` injects the
   same placeholder into ReqLLM's config when running in replay or
   default mode so cassette matching succeeds without a real key.
-- For v0.1.1 the agent runs mutating actions under `auto_execute`
-  rather than `confirm_before`; the eval runner's halt → resume →
-  retry path through gated tool nodes is a follow-up that will let
-  us put `:change_flight` / `:cancel` back under confirmation.

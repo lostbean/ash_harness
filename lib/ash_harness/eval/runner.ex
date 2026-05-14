@@ -44,6 +44,10 @@ defmodule AshHarness.Eval.Runner do
     * `:max_turns` — int, defaults to 12.
     * `:cassette_module` — override the module used to resolve cassette
       paths; defaults to the scenario's caller.
+    * `:req_options` — when provided, bypasses `ReqCassette.with_cassette/3`
+      and passes these options straight through to
+      `Harness.new_session/2`. Used by tests that want to inject an
+      `LLMStub` plug without recording a cassette.
   """
 
   alias AshHarness.Eval.Cassette
@@ -75,6 +79,7 @@ defmodule AshHarness.Eval.Runner do
     auto_confirm = resolve_auto_confirm(scenario, opts)
     max_turns = Keyword.get(opts, :max_turns, @default_max_turns)
     cassette_module = Keyword.get(opts, :cassette_module) || cassette_module_default(scenario)
+    runner_req_options = Keyword.get(opts, :req_options)
 
     sandbox_resources = resources_for_sandbox(scenario)
     {:ok, sandbox} = Sandbox.open(sandbox_resources)
@@ -87,7 +92,7 @@ defmodule AshHarness.Eval.Runner do
 
     {trajectory, tokens, terminated_reason, session_after, terminated_error} =
       if scenario.agent && scenario.prompt do
-        drive_agent(scenario, cassette_module, auto_confirm, max_turns)
+        drive_agent(scenario, cassette_module, auto_confirm, max_turns, runner_req_options)
       else
         {[], 0, :not_executed, nil, nil}
       end
@@ -145,7 +150,17 @@ defmodule AshHarness.Eval.Runner do
   # Internal
   # ----------------------------------------------------------------
 
-  defp drive_agent(%Scenario{} = scenario, cassette_module, auto_confirm, max_turns) do
+  defp drive_agent(%Scenario{} = scenario, _cassette_module, auto_confirm, max_turns, req_options)
+       when is_list(req_options) do
+    # Caller supplied their own req_options (e.g. an LLM stub plug);
+    # skip cassette wrapping entirely.
+    session = Harness.new_session(scenario.agent, req_options: req_options)
+    loop(session, scenario.prompt, auto_confirm, max_turns, 0)
+  rescue
+    e -> {[], 0, :error, nil, e}
+  end
+
+  defp drive_agent(%Scenario{} = scenario, cassette_module, auto_confirm, max_turns, nil) do
     cassette_path = Cassette.cassette_path(cassette_module, scenario.name)
     cassette_mode = Cassette.mode()
 
@@ -182,7 +197,7 @@ defmodule AshHarness.Eval.Runner do
         response = %ApprovalResponse{
           request_id: request_id(request),
           decision: decision,
-          data: request_payload_data(request),
+          data: request_payload_data(request, updated.agent),
           responded_at: DateTime.utc_now()
         }
 
@@ -212,7 +227,52 @@ defmodule AshHarness.Eval.Runner do
 
   defp request_id(%{id: id}) when is_binary(id), do: id
 
-  defp request_payload_data(%{metadata: %{} = m}), do: Map.take(m, [:resource, :action])
+  # Builds the `data` payload attached to the `ApprovalResponse`. The
+  # session's `do_record_approval` keys `session.metadata.approvals`
+  # under `{resource, action}`, and the secondary `ConfirmationGate`
+  # looks the entry up by the same key — so the data **must** carry
+  # `:resource` and `:action`.
+  #
+  # The orchestrator strategy's `ApprovalRequest.metadata` is
+  # `%{tool_call_id, tool_name}` (see `Jido.Composer.ApprovalGate.partition_calls/3`).
+  # Our own `ConfirmationGate.check/2` builds requests with
+  # `metadata: %{resource, action, ...}`. Handle both shapes:
+  #
+  #   1. If the metadata already carries `:resource` and `:action`,
+  #      pass them through.
+  #   2. Otherwise, reverse-lookup `metadata.tool_name` against the
+  #      agent's canonical tool list to recover `{resource, action}`.
+  defp request_payload_data(%{metadata: %{} = m}, agent_module) do
+    case Map.take(m, [:resource, :action]) do
+      %{resource: _, action: _} = full ->
+        full
+
+      partial ->
+        case lookup_tool(agent_module, Map.get(m, :tool_name) || Map.get(m, "tool_name")) do
+          {:ok, %{resource: resource, action_name: action}} ->
+            Map.merge(partial, %{resource: resource, action: action})
+
+          :error ->
+            partial
+        end
+    end
+  end
+
+  defp request_payload_data(_request, _agent_module), do: %{}
+
+  defp lookup_tool(agent_module, tool_name)
+       when is_atom(agent_module) and not is_nil(agent_module) and is_binary(tool_name) do
+    case Enum.find(AshHarness.Agent.Info.tool_list(agent_module), fn c ->
+           c.tool_name == tool_name
+         end) do
+      nil -> :error
+      canonical -> {:ok, canonical}
+    end
+  rescue
+    _ -> :error
+  end
+
+  defp lookup_tool(_, _), do: :error
 
   @doc false
   def decide(:always_approve, _), do: :approved
