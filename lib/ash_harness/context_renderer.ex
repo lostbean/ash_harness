@@ -40,17 +40,51 @@ defmodule AshHarness.ContextRenderer do
     use_cache? = Keyword.get(opts, :cache?, true)
     cache_key = {agent_module, actor_id(actor), agent_signature(agent_module)}
 
-    case use_cache? && cache_lookup(cache_key) do
-      %RenderedContext{} = cached ->
-        cached
+    started_at = System.monotonic_time(:millisecond)
 
-      _ ->
-        rendered = do_render(agent_module, actor, opts)
+    {rendered, cache_hit?} =
+      case use_cache? && cache_lookup(cache_key) do
+        %RenderedContext{} = cached ->
+          {cached, true}
 
-        if use_cache?, do: cache_put(cache_key, rendered)
-        rendered
-    end
+        _ ->
+          fresh = do_render(agent_module, actor, opts)
+          if use_cache?, do: cache_put(cache_key, fresh)
+          {fresh, false}
+      end
+
+    render_time_ms = System.monotonic_time(:millisecond) - started_at
+    emit_rendered_event(agent_module, actor, rendered, cache_hit?, render_time_ms)
+    rendered
   end
+
+  defp emit_rendered_event(
+         agent_module,
+         actor,
+         %RenderedContext{} = rendered,
+         cache_hit?,
+         render_time_ms
+       ) do
+    AshHarness.Telemetry.emit(
+      [:ash_harness, :context, :rendered],
+      %{
+        token_estimate: rendered.token_estimate,
+        cache_hit?: cache_hit?,
+        render_time_ms: render_time_ms,
+        sections_count: count_sections(rendered.initial_text)
+      },
+      %{
+        agent: agent_module,
+        actor_id: actor_id(actor)
+      }
+    )
+  end
+
+  defp count_sections(text) when is_binary(text) do
+    Regex.scan(~r/^# /m, text) |> length()
+  end
+
+  defp count_sections(_), do: 0
 
   defp do_render(agent_module, actor, opts) do
     budget = Keyword.get(opts, :token_budget)

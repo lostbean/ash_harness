@@ -142,7 +142,15 @@ defmodule AshHarness.Harness.Repair do
       else: base
   end
 
-  defp intent_has_delegate_option?(_intent), do: false
+  defp intent_has_delegate_option?(%Intent{metadata: %{agent: agent}})
+       when is_atom(agent) and not is_nil(agent) do
+    case AshHarness.Agent.Info.delegates(agent) do
+      [] -> false
+      _ -> true
+    end
+  end
+
+  defp intent_has_delegate_option?(_), do: false
 
   @doc """
   Returns `true` for retryable errors (validation, transport),

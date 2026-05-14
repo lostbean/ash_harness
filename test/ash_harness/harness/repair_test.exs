@@ -238,6 +238,36 @@ defmodule AshHarness.Harness.RepairTest do
     end
   end
 
+  describe "policy-denial feedback mentions delegation when available" do
+    test "agent without delegates: feedback does not mention delegation" do
+      intent = %Intent{
+        resource: AshHarness.Test.Ticket,
+        action: :assign,
+        input: %{},
+        request_id: "r",
+        metadata: %{agent: AshHarness.Test.TriageAgent}
+      }
+
+      text = Repair.format_feedback(%Ash.Error.Forbidden{}, intent)
+      assert text =~ "Authorization denied"
+      refute text =~ "delegat"
+    end
+
+    test "agent with delegates: feedback mentions delegation" do
+      intent = %Intent{
+        resource: AshHarness.Test.Ticket,
+        action: :assign,
+        input: %{},
+        request_id: "r",
+        metadata: %{agent: AshHarness.Test.DelegatingAgent}
+      }
+
+      text = Repair.format_feedback(%Ash.Error.Forbidden{}, intent)
+      assert text =~ "Authorization denied"
+      assert text =~ "delegat"
+    end
+  end
+
   test "output never includes file paths or Elixir.Module references" do
     err = %Ash.Error.Invalid{
       errors: [%{field: :foo, message: "bad", stacktrace: "/path/file.ex:10"}]

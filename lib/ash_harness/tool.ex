@@ -72,4 +72,46 @@ defmodule AshHarness.Tool do
       canonical: canonical
     }
   end
+
+  @doc """
+  Dispatch a dynamic tool through the harness gate pipeline. Returns the
+  same shape as `Jido.Action.run/2`: `{:ok, result_map}` or
+  `{:error, feedback_string}`.
+
+  `ctx` must carry `:ash_harness_session_pid` (and optionally
+  `:ash_harness_session`, `:request_id`), as the compile-time tools do.
+
+  `AshHarness.Harness.GeneratedAction.dispatch/5` is the shared dispatch
+  entry point — both compile-time and dynamic tools route through it,
+  giving identical gate semantics.
+  """
+  @spec run(t(), map(), map()) :: {:ok, map()} | {:error, String.t()}
+  def run(%__MODULE__{resource: nil}, _params, _ctx) do
+    {:error, "Dynamic tool has no :resource configured"}
+  end
+
+  def run(%__MODULE__{action: nil}, _params, _ctx) do
+    {:error, "Dynamic tool has no :action configured"}
+  end
+
+  def run(%__MODULE__{resource: resource, action: action, input_builder: builder}, params, ctx)
+      when is_atom(resource) and is_atom(action) do
+    agent_module =
+      Map.get(ctx, :ash_harness_session, %{}) |> Map.get(:agent) ||
+        Map.get(ctx, :agent)
+
+    if is_nil(agent_module) do
+      {:error, "Dynamic tool dispatch requires :ash_harness_session in ctx with an :agent"}
+    else
+      final_params = if builder, do: builder.(params), else: params
+
+      AshHarness.Harness.GeneratedAction.dispatch(
+        agent_module,
+        resource,
+        action,
+        final_params,
+        ctx
+      )
+    end
+  end
 end

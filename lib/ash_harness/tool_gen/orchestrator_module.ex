@@ -41,7 +41,7 @@ defmodule AshHarness.ToolGen.OrchestratorModule do
         else
           mod
         end
-      end)
+      end) ++ [AshHarness.Harness.LoadResourceSkill]
 
     quote do
       defmodule unquote(orch_mod) do

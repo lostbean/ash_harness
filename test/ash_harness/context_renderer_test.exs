@@ -74,4 +74,55 @@ defmodule AshHarness.ContextRendererTest do
     ctx2 = ContextRenderer.render(TriageAgent)
     assert ctx1 == ctx2
   end
+
+  describe "telemetry" do
+    alias AshHarness.Test.TriageAgent
+
+    setup do
+      handler_id = "ctx-rendered-#{System.unique_integer()}"
+      parent = self()
+
+      :telemetry.attach(
+        handler_id,
+        [:ash_harness, :context, :rendered],
+        fn _evt, measurements, metadata, _ ->
+          send(parent, {:rendered, measurements, metadata})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+      :ok
+    end
+
+    test "render/2 emits [:ash_harness, :context, :rendered] with token_estimate and cache_hit?: false on first call" do
+      _ = AshHarness.ContextRenderer.render(TriageAgent, actor: %{id: "u1"})
+
+      assert_receive {:rendered, measurements, metadata}
+      assert measurements.token_estimate > 0
+      assert measurements.cache_hit? == false
+      assert is_integer(measurements.render_time_ms)
+      assert measurements.render_time_ms >= 0
+      assert is_integer(measurements.sections_count)
+      assert measurements.sections_count > 0
+      assert metadata.agent == TriageAgent
+    end
+
+    test "render/2 emits with cache_hit?: true on second identical call" do
+      actor = %{id: "u1"}
+      _ = AshHarness.ContextRenderer.render(TriageAgent, actor: actor)
+
+      # Drain the first event
+      assert_receive {:rendered, _, _}
+
+      # Second call should be a cache hit
+      _ = AshHarness.ContextRenderer.render(TriageAgent, actor: actor)
+      assert_receive {:rendered, measurements, _}
+      assert measurements.cache_hit? == true
+      assert is_integer(measurements.render_time_ms)
+      assert measurements.render_time_ms >= 0
+      assert is_integer(measurements.sections_count)
+      assert measurements.sections_count > 0
+    end
+  end
 end

@@ -201,6 +201,28 @@ defmodule AshHarness.Harness do
   end
 
   @doc """
+  Returns the cumulative number of LLM tokens consumed by this session
+  so far. Reads `_obs.cumulative_tokens.total` off the orchestrator's
+  strategy state — that field is populated by Jido's
+  `Orchestrator.Obs.accumulate_tokens/2` on every LLM response that
+  carries `usage` info.
+
+  Returns 0 when there is no orchestrator, no observed LLM activity,
+  or the strategy state has been cleared.
+  """
+  @spec tokens_used(Session.t()) :: non_neg_integer()
+  def tokens_used(%Session{jido_orchestrator: nil}), do: 0
+
+  def tokens_used(%Session{jido_orchestrator: %Jido.Agent{} = agent}) do
+    case Jido.Agent.Strategy.State.get(agent, %{}) do
+      %{_obs: %{cumulative_tokens: %{total: total}}} when is_integer(total) -> total
+      _ -> 0
+    end
+  end
+
+  def tokens_used(%Session{}), do: 0
+
+  @doc """
   Explicitly tear down the SessionAgent backing this session.
   Idempotent.
   """
@@ -308,14 +330,28 @@ defmodule AshHarness.Harness do
       metadata: %{request_id: response.request_id}
     }
 
-    case session_pid(session) do
-      pid when is_pid(pid) ->
-        :ok = SessionAgent.append_trajectory(pid, entry)
-        session
+    updated_session =
+      case session_pid(session) do
+        pid when is_pid(pid) ->
+          :ok = SessionAgent.append_trajectory(pid, entry)
+          session
 
-      _ ->
-        %{session | trajectory: [entry | session.trajectory]}
-    end
+        _ ->
+          %{session | trajectory: [entry | session.trajectory]}
+      end
+
+    AshHarness.Telemetry.emit(
+      [:ash_harness, :confirmation, :rejected],
+      %{},
+      %{
+        agent: session.agent,
+        resource: resource,
+        action: action,
+        request_id: response.request_id
+      }
+    )
+
+    updated_session
   end
 
   defp maybe_append_rejection_entry(session, _response), do: session

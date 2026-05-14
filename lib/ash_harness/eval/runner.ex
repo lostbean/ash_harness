@@ -48,6 +48,13 @@ defmodule AshHarness.Eval.Runner do
       and passes these options straight through to
       `Harness.new_session/2`. Used by tests that want to inject an
       `LLMStub` plug without recording a cassette.
+    * `:judge_model` — model spec for the qualitative-report judge
+      (e.g. `"anthropic:claude-sonnet-4-5"`). Overrides the
+      `config :ash_harness, :eval, judge_model: ...` default. When
+      neither is set, qualitative reports emit empty `scores`.
+    * `:judge_req_options` — HTTP options forwarded to the judge's
+      ReqLLM call as `:req_http_options`. Same shape as `:req_options`:
+      `[plug: {LLMStub, pid}]` works for in-process testing.
   """
 
   alias AshHarness.Eval.Cassette
@@ -80,6 +87,8 @@ defmodule AshHarness.Eval.Runner do
     max_turns = Keyword.get(opts, :max_turns, @default_max_turns)
     cassette_module = Keyword.get(opts, :cassette_module) || cassette_module_default(scenario)
     runner_req_options = Keyword.get(opts, :req_options)
+    judge_model = Keyword.get(opts, :judge_model)
+    judge_req_options = Keyword.get(opts, :judge_req_options, [])
 
     sandbox_resources = resources_for_sandbox(scenario)
     {:ok, sandbox} = Sandbox.open(sandbox_resources)
@@ -103,7 +112,9 @@ defmodule AshHarness.Eval.Runner do
       records: records,
       trajectory: trajectory,
       tokens_used: tokens,
-      session: session_after
+      session: session_after,
+      judge_model: judge_model,
+      judge_req_options: judge_req_options
     }
 
     gate_results = Enum.map(scenario.gates, fn g -> evaluate_gate(g, ctx) end)
@@ -212,13 +223,13 @@ defmodule AshHarness.Eval.Runner do
 
   defp loop(session, _prompt, _auto_confirm, max_turns, turn) when turn >= max_turns do
     trajectory = Harness.trajectory(session)
-    {trajectory, 0, :max_turns, session, nil}
+    {trajectory, Harness.tokens_used(session), :max_turns, session, nil}
   end
 
   defp loop(%Session{} = session, prompt, auto_confirm, max_turns, turn) do
     case Harness.run(session, prompt) do
       {:ok, _reply, updated} ->
-        {Harness.trajectory(updated), 0, :goal_met, updated, nil}
+        {Harness.trajectory(updated), Harness.tokens_used(updated), :goal_met, updated, nil}
 
       {:halt, request, updated} ->
         decision = decide(auto_confirm, request)
@@ -236,17 +247,17 @@ defmodule AshHarness.Eval.Runner do
             loop(resumed, prompt, auto_confirm, max_turns, turn + 1)
 
           {:ok, _reply, resumed} ->
-            {Harness.trajectory(resumed), 0, :goal_met, resumed, nil}
+            {Harness.trajectory(resumed), Harness.tokens_used(resumed), :goal_met, resumed, nil}
 
           {:halt, _new_request, _} = halted_again ->
             handle_repeated_halt(halted_again, prompt, auto_confirm, max_turns, turn)
 
           {:error, reason, errored} ->
-            {Harness.trajectory(errored), 0, :error, errored, reason}
+            {Harness.trajectory(errored), Harness.tokens_used(errored), :error, errored, reason}
         end
 
       {:error, reason, errored} ->
-        {Harness.trajectory(errored), 0, :error, errored, reason}
+        {Harness.trajectory(errored), Harness.tokens_used(errored), :error, errored, reason}
     end
   end
 

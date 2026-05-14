@@ -53,17 +53,34 @@ defmodule AshHarness.Harness.GeneratedAction do
       action: action_name,
       input: strip_internal(params),
       reasoning: reasoning,
-      request_id: Map.get(ctx, :request_id) || gen_request_id()
+      request_id: Map.get(ctx, :request_id) || gen_request_id(),
+      metadata: %{agent: agent_module}
     }
 
     cap = AgentInfo.max_repair_loop_retries(agent_module)
     attempts = current_repair_attempts(pid, session, resource, action_name)
+
+    set_dispatch_otel_attrs(session, intent, attempts)
 
     if cap > 0 and attempts >= cap do
       handle_repair_exhausted(agent_module, intent, attempts, started_at, pid, session)
     else
       run_pipeline(agent_module, intent, session, pid, started_at)
     end
+  end
+
+  # Set the always-on attributes that don't depend on which gate
+  # we're about to run: session/request ids and the current
+  # repair-attempt count. Gate-specific .passed / budget.* attrs are
+  # set inside each `*_check` clause below.
+  defp set_dispatch_otel_attrs(session, intent, repair_attempts) do
+    session_id = session.request_id || intent.request_id
+
+    Telemetry.set_otel_attributes(%{
+      "session.id" => session_id,
+      "request.id" => intent.request_id,
+      "repair.attempt" => repair_attempts
+    })
   end
 
   # ----------------------------------------------------------------
@@ -83,9 +100,11 @@ defmodule AshHarness.Harness.GeneratedAction do
   defp scope_check(session, intent, pid, started_at) do
     case ScopeGate.check(session, intent) do
       :ok ->
+        Telemetry.set_otel_attribute("scope.passed", true)
         :ok
 
       {:error, reason} ->
+        Telemetry.set_otel_attribute("scope.passed", false)
         append(pid, intent, :scope_violation, started_at)
         emit_repair_feedback(session.agent, intent, reason)
         {:error, Repair.format_feedback(reason, intent)}
@@ -118,6 +137,8 @@ defmodule AshHarness.Harness.GeneratedAction do
   end
 
   defp budget_check(session, intent, pid, started_at) do
+    set_budget_otel_attrs(session)
+
     case BudgetGate.check(session, intent) do
       :ok ->
         :ok
@@ -129,12 +150,21 @@ defmodule AshHarness.Harness.GeneratedAction do
     end
   end
 
+  defp set_budget_otel_attrs(%Session{agent: agent, mutation_count: count}) do
+    Telemetry.set_otel_attributes(%{
+      "budget.count" => count,
+      "budget.max" => AgentInfo.max_mutations_per_turn(agent)
+    })
+  end
+
   defp policy_check(session, intent, pid, started_at) do
     case PolicyGate.check(session, intent) do
       :ok ->
+        Telemetry.set_otel_attribute("policy.passed", true)
         :ok
 
       {:error, reason} ->
+        Telemetry.set_otel_attribute("policy.passed", false)
         append(pid, intent, :policy_denied, started_at)
         emit_repair_feedback(session.agent, intent, reason)
         {:error, Repair.format_feedback(reason, intent)}

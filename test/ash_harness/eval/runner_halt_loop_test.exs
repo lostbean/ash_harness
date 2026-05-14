@@ -66,4 +66,30 @@ defmodule AshHarness.Eval.RunnerHaltLoopTest do
              ", trajectory=" <>
              inspect(result.session_trajectory, pretty: true)
   end
+
+  test "Result.tokens_used is populated from cumulative LLM usage across halt → resume" do
+    pid =
+      LLMStub.start_link!([
+        LLMStub.tool_use("ticket__assign", %{
+          "id" => HaltLoopEval.ticket_id(),
+          "assigned_to" => "alice",
+          "reasoning" => "User asked."
+        }),
+        LLMStub.text("Done.")
+      ])
+
+    [scenario] = HaltLoopEval.scenarios()
+
+    result =
+      Runner.run(scenario,
+        auto_confirm: :always_approve,
+        req_options: [plug: {LLMStub, pid}]
+      )
+
+    assert is_integer(result.tokens_used)
+
+    assert result.tokens_used > 0,
+           "expected Result.tokens_used to be > 0 after LLM-driven scenario; got: " <>
+             inspect(result.tokens_used)
+  end
 end

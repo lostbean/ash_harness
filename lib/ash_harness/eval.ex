@@ -160,11 +160,26 @@ defmodule AshHarness.Eval do
             opts = unquote(opts_ast)
             trajectory = ctx[:trajectory] || []
             actions = length(trajectory)
+            tokens = ctx[:tokens_used] || 0
+
+            trajectory_actions = AshHarness.Eval.__trajectory_action_names__(trajectory)
+
+            max_tokens = opts[:max_tokens]
+            includes_seq = opts[:includes_sequence] || []
+            excludes_list = opts[:excludes] || []
 
             %{
               actions: actions,
               max_actions: opts[:max_actions],
-              max_actions_ok: actions <= (opts[:max_actions] || actions)
+              max_actions_ok: actions <= (opts[:max_actions] || actions),
+              tokens_used: tokens,
+              max_tokens: max_tokens,
+              max_tokens_ok: is_nil(max_tokens) or tokens <= max_tokens,
+              includes_sequence: includes_seq,
+              includes_sequence_ok:
+                AshHarness.Eval.subsequence?(trajectory_actions, includes_seq),
+              excludes: excludes_list,
+              excludes_ok: not Enum.any?(trajectory_actions, fn a -> a in excludes_list end)
             }
           end
         }
@@ -180,15 +195,88 @@ defmodule AshHarness.Eval do
       var!(ash_harness_reports) = [
         %AshHarness.Eval.Report{
           kind: :qualitative,
-          compute: fn _ctx ->
+          compute: fn ctx ->
             criteria = unquote(criteria_ast)
-            %{criteria: criteria, scores: %{}}
+            AshHarness.Eval.__qualitative_compute__(criteria, ctx)
           end
         }
         | var!(ash_harness_reports)
       ]
     end
   end
+
+  @doc false
+  # Runtime helper for `report :qualitative`. Pulled out of the macro
+  # so the judge wiring can be unit-tested directly and so changes
+  # don't require recompiling every scenario module.
+  def __qualitative_compute__(criteria, ctx) do
+    judge_model =
+      ctx[:judge_model] || Application.get_env(:ash_harness, :eval, [])[:judge_model]
+
+    judge_req_options = ctx[:judge_req_options] || []
+
+    scores =
+      if judge_model do
+        AshHarness.Eval.Judge.score(criteria, ctx, judge_model, judge_req_options)
+      else
+        %{}
+      end
+
+    observations =
+      Enum.map(criteria, fn %{name: name, opts: opts} ->
+        score = Map.get(scores, name)
+        threshold = opts[:threshold]
+
+        %{
+          name: name,
+          score: score,
+          threshold: threshold,
+          prompt: opts[:prompt],
+          below_threshold?: is_number(score) and is_number(threshold) and score < threshold
+        }
+      end)
+
+    %{criteria: criteria, scores: scores, observations: observations}
+  end
+
+  # ----------------------------------------------------------------
+  # Trajectory report runtime helpers
+  # ----------------------------------------------------------------
+
+  @doc false
+  # Extract normalized action names (e.g. :ticket_assign) from a
+  # trajectory list. Each entry is expected to expose an `:intent` map
+  # with `:resource` (module) and `:action` (atom). Entries without
+  # both are skipped.
+  def __trajectory_action_names__(trajectory) when is_list(trajectory) do
+    trajectory
+    |> Enum.map(&trajectory_entry_action_name/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  def __trajectory_action_names__(_), do: []
+
+  defp trajectory_entry_action_name(%{intent: %{resource: r, action: a}})
+       when not is_nil(r) and not is_nil(a) do
+    short =
+      r
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+      |> String.to_atom()
+
+    :"#{short}_#{a}"
+  end
+
+  defp trajectory_entry_action_name(_), do: nil
+
+  @doc false
+  # Returns true iff `needle` appears as an in-order (but not
+  # necessarily contiguous) subsequence of `haystack`.
+  def subsequence?(_haystack, []), do: true
+  def subsequence?([], _needle), do: false
+  def subsequence?([h | rest], [h | needle_rest]), do: subsequence?(rest, needle_rest)
+  def subsequence?([_ | rest], needle), do: subsequence?(rest, needle)
 
   # ----------------------------------------------------------------
   # Block parsers (compile-time helpers)
