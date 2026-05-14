@@ -161,6 +161,8 @@ defmodule AshHarness.Eval.Runner do
   end
 
   defp drive_agent(%Scenario{} = scenario, cassette_module, auto_confirm, max_turns, nil) do
+    ensure_req_cassette!()
+
     cassette_path = Cassette.cassette_path(cassette_module, scenario.name)
     cassette_mode = Cassette.mode()
 
@@ -171,14 +173,41 @@ defmodule AshHarness.Eval.Runner do
 
     cassette_name = Path.basename(cassette_path, ".json")
 
-    ReqCassette.with_cassette(cassette_name, cassette_opts, fn plug ->
-      session =
-        Harness.new_session(scenario.agent, req_options: [plug: plug])
+    # `apply/3` keeps the compiler from resolving `ReqCassette` at compile
+    # time — important because `req_cassette` is declared
+    # `only: [:dev, :test]` in mix.exs, so when ash_harness is compiled as
+    # a path dependency of another package (e.g. the τ-bench child), the
+    # module isn't visible at compile time even though the host typically
+    # has its own req_cassette dep.
+    apply(ReqCassette, :with_cassette, [
+      cassette_name,
+      cassette_opts,
+      fn plug ->
+        session =
+          Harness.new_session(scenario.agent, req_options: [plug: plug])
 
-      loop(session, scenario.prompt, auto_confirm, max_turns, 0)
-    end)
+        loop(session, scenario.prompt, auto_confirm, max_turns, 0)
+      end
+    ])
   rescue
     e -> {[], 0, :error, nil, e}
+  end
+
+  defp ensure_req_cassette! do
+    unless Code.ensure_loaded?(ReqCassette) do
+      Mix.raise("""
+      AshHarness.Eval.Runner needs `:req_cassette` to drive scenarios.
+      Add it to your `mix.exs` deps (it's already in ash_harness's deps
+      under `only: [:dev, :test]`; if you're calling Eval.Runner from a
+      child package, add `{:req_cassette, "~> 0.6"}` directly):
+
+          defp deps do
+            [
+              {:req_cassette, "~> 0.6"}
+            ]
+          end
+      """)
+    end
   end
 
   defp loop(session, _prompt, _auto_confirm, max_turns, turn) when turn >= max_turns do
