@@ -1,0 +1,29 @@
+[
+  {
+    "id": "r-001",
+    "customer_id": "c-001",
+    "flight_id": "f-100",
+    "fare_class": "premium",
+    "status": "booked",
+    "purchase_date": "2026-05-01T10:00:00Z",
+    "ticket_price": "499.00"
+  },
+  {
+    "id": "r-002",
+    "customer_id": "c-002",
+    "flight_id": "f-200",
+    "fare_class": "economy",
+    "status": "booked",
+    "purchase_date": "2026-05-02T11:00:00Z",
+    "ticket_price": "319.00"
+  },
+  {
+    "id": "r-003",
+    "customer_id": "c-003",
+    "flight_id": "f-300",
+    "fare_class": "basic",
+    "status": "booked",
+    "purchase_date": "2026-05-03T12:00:00Z",
+    "ticket_price": "199.00"
+  }
+]

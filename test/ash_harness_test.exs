@@ -1,8 +1,7 @@
 defmodule AshHarnessTest do
-  use ExUnit.Case
-  doctest AshHarness
+  use ExUnit.Case, async: true
 
-  test "greets the world" do
-    assert AshHarness.hello() == :world
+  test "version is a string" do
+    assert is_binary(AshHarness.version())
   end
 end

@@ -1,0 +1,20 @@
+[
+  {
+    "task_id": "T-001",
+    "customer_id": "c-001",
+    "goal": "Change my JFK→LAX flight from 8am to 2pm.",
+    "expected_outcome": "reservation r-001 changed to flight f-101"
+  },
+  {
+    "task_id": "T-002",
+    "customer_id": "c-002",
+    "goal": "Cancel my reservation.",
+    "expected_outcome": "reservation r-002 cancelled"
+  },
+  {
+    "task_id": "T-003",
+    "customer_id": "c-003",
+    "goal": "Cancel my basic-fare reservation.",
+    "expected_outcome": "policy denial — basic fare cannot be cancelled"
+  }
+]

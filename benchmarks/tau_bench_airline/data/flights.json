@@ -1,0 +1,34 @@
+[
+  {
+    "id": "f-100",
+    "origin": "JFK",
+    "destination": "LAX",
+    "departure_at": "2026-06-01T08:00:00Z",
+    "seats_available": 12,
+    "base_price": "299.00"
+  },
+  {
+    "id": "f-101",
+    "origin": "JFK",
+    "destination": "LAX",
+    "departure_at": "2026-06-01T14:00:00Z",
+    "seats_available": 4,
+    "base_price": "349.00"
+  },
+  {
+    "id": "f-200",
+    "origin": "LAX",
+    "destination": "JFK",
+    "departure_at": "2026-06-05T10:00:00Z",
+    "seats_available": 8,
+    "base_price": "319.00"
+  },
+  {
+    "id": "f-300",
+    "origin": "SFO",
+    "destination": "ORD",
+    "departure_at": "2026-06-02T07:30:00Z",
+    "seats_available": 22,
+    "base_price": "249.00"
+  }
+]

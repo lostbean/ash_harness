@@ -4,7 +4,16 @@
       "WebFetch(domain:hex.pm)",
       "WebFetch(domain:hexdocs.pm)",
       "Bash(gh api *)",
-      "Bash(npx openspec *)"
+      "Bash(npx openspec *)",
+      "Bash(openspec list *)",
+      "Bash(~/.npm-global/lib/node_modules/@fission-ai/openspec/bin/openspec.js list *)",
+      "Bash(mix deps.get)",
+      "Bash(mix compile *)",
+      "Bash(mix test *)",
+      "Bash(MIX_ENV=test mix compile)",
+      "Bash(mix run *)",
+      "Bash(MIX_ENV=test mix compile --force)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

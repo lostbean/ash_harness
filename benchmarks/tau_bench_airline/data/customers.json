@@ -1,0 +1,20 @@
+[
+  {
+    "id": "c-001",
+    "name": "Alice Smith",
+    "email": "alice@example.com",
+    "loyalty_tier": "gold"
+  },
+  {
+    "id": "c-002",
+    "name": "Bob Jones",
+    "email": "bob@example.com",
+    "loyalty_tier": "silver"
+  },
+  {
+    "id": "c-003",
+    "name": "Carol Park",
+    "email": "carol@example.com",
+    "loyalty_tier": "basic"
+  }
+]

@@ -1,11 +1,9 @@
-# The directory Mix will write compiled artifacts to.
-/_build/
-
-# If you run "mix test --cover", coverage assets end up here.
-/cover/
-
-# The directory Mix downloads your dependencies sources to.
-/deps/
+# Mix build/dependency artifacts — also catches nested child packages
+# under `benchmarks/*/` and `examples/*/`, each of which has its own
+# Mix project. Unanchored so they match at any directory depth.
+_build/
+cover/
+deps/
 
 # Where third-party dependencies like ExDoc output generated docs.
 /doc/
@@ -19,6 +17,17 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 ash_harness-*.tar
 
+# Dialyzer PLT files.
+*.plt
+.dialyzer/
+
 # Temporary files, for example, from tests.
 /tmp/
 /.direnv
+
+# Editor / OS clutter.
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
