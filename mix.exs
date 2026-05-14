@@ -4,6 +4,10 @@ defmodule AshHarness.MixProject do
   @version "0.1.1"
   @source_url "https://github.com/ash-project/ash_harness"
 
+  def cli do
+    [preferred_envs: [qa: :test, "qa.full": :test, bench: :dev]]
+  end
+
   def project do
     [
       app: :ash_harness,
@@ -16,9 +20,38 @@ defmodule AshHarness.MixProject do
       package: package(),
       docs: docs(),
       dialyzer: dialyzer(),
+      aliases: aliases(),
       name: "AshHarness",
       source_url: @source_url
     ]
+  end
+
+  # `mix qa` runs the four fast quality gates in order, fail-fast.
+  # Dialyzer is opt-in via `mix qa.full` because its PLT build is slow.
+  # `mix bench` runs the τ-bench airline replay (a capability smoke
+  # check, separate from code quality).
+  defp aliases do
+    [
+      qa: [
+        "format --check-formatted",
+        "compile --warnings-as-errors",
+        "test",
+        "credo --strict"
+      ],
+      "qa.full": ["qa", "dialyzer"],
+      bench: [&run_tau_bench/1]
+    ]
+  end
+
+  defp run_tau_bench(_args) do
+    {_io, status} =
+      System.cmd("mix", ["tau_bench.run"],
+        cd: "benchmarks/tau_bench_airline",
+        into: IO.stream(:stdio, :line),
+        stderr_to_stdout: true
+      )
+
+    if status != 0, do: Mix.raise("mix tau_bench.run exited with status #{status}")
   end
 
   defp dialyzer do

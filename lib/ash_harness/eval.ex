@@ -53,12 +53,20 @@ defmodule AshHarness.Eval do
       @ash_harness_scenario_names unquote(name)
 
       def unquote(fn_name)() do
+        # Defaults; user macros (agent/setup/prompt/auto_confirm/gate/report)
+        # shadow these inside the block. The `_ = ...` pin marks each
+        # default as used so the compiler doesn't warn when a scenario
+        # overrides — without changing observable behavior.
         var!(ash_harness_agent) = nil
+        _ = var!(ash_harness_agent)
         var!(ash_harness_setup) = fn -> %{} end
+        _ = var!(ash_harness_setup)
         var!(ash_harness_prompt) = nil
+        _ = var!(ash_harness_prompt)
         var!(ash_harness_gates) = []
         var!(ash_harness_reports) = []
         var!(ash_harness_auto_confirm) = nil
+        _ = var!(ash_harness_auto_confirm)
 
         unquote(block)
 

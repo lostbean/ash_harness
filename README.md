@@ -109,6 +109,18 @@ Run a turn:
   (`report :trajectory`, `report :qualitative`). No composite weighted
   score — pass/fail is binary (ADR 0002).
 
+## Development gates
+
+The repo ships three mix aliases for the local quality matrix:
+
+| Command         | What it runs                                                   |
+| --------------- | -------------------------------------------------------------- |
+| `mix qa`        | `format --check-formatted` → `compile --warnings-as-errors` → `test` → `credo --strict`. Fail-fast. Mirrors CI's parent-package job. |
+| `mix qa.full`   | `mix qa` plus `mix dialyzer`. The slow gate; run before pushing or in nightly. |
+| `mix bench`     | τ-bench airline replay (`benchmarks/tau_bench_airline/`). Capability smoke check, not a code-quality gate. |
+
+All three exit non-zero on the first failing step.
+
 ## Testing eval scenarios
 
 `AshHarness.Eval.Runner` drives scenarios end-to-end against the real
