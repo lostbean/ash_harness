@@ -158,3 +158,11 @@ gated with `@tag :integration`.
   `assert_resource` → `gate :resource_state`; `assert_trajectory` →
   `report :trajectory`. If you see the old names in code or future user
   messages, treat them as a hint to check `design/glossary.md`.
+
+## Commit policy
+
+- **No `Co-Authored-By:` trailer.** Commits must not include the
+  `Co-Authored-By: Claude ... <noreply@anthropic.com>` line that
+  Claude Code adds by default. When committing on this repo, omit the
+  trailer. If a commit slips through with it, follow up with
+  `git filter-repo --message-callback` to strip it.
