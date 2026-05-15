@@ -52,7 +52,21 @@ jobs:
           otp-version: "27"
           elixir-version: "1.18"
       - run: mix deps.get
-      - run: MIX_ENV=postgres mix test --only postgres
+      # Until Phase 8 adds :postgres-tagged tests, the job's value is
+      # exercising the MIX_ENV=postgres compile path against the live PG
+      # service. `mix test --only postgres` exits 1 when zero tests match
+      # (Mix design), so capture output and tolerate that one case.
+      - name: Compile against postgres env
+        run: MIX_ENV=postgres mix compile --warnings-as-errors
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PASSWORD: postgres
+      - name: Run postgres-tagged tests (tolerate zero matches)
+        run: |
+          set -o pipefail
+          output=$(MIX_ENV=postgres mix test --only postgres 2>&1) || \
+            grep -q 'no test was executed' <<< "$output"
+          echo "$output"
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PASSWORD: postgres

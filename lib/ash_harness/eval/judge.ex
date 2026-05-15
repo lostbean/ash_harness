@@ -43,6 +43,18 @@ defmodule AshHarness.Eval.Judge do
         list when is_list(list) -> [req_http_options: list]
       end
 
+    # When the caller injected a Req `:plug` (stubbed LLM, e.g. in tests),
+    # ReqLLM's key resolution still runs and raises if no API-key is
+    # configured. Inject a sentinel `:api_key` so the plug actually
+    # intercepts. Real callers without a plug fall through to normal
+    # env-var / config resolution.
+    opts =
+      if stubbed_plug?(req_options) and not Keyword.has_key?(opts, :api_key) do
+        Keyword.put(opts, :api_key, "stub-plug")
+      else
+        opts
+      end
+
     case ReqLLM.generate_text(model, prompt, opts) do
       {:ok, response} ->
         text = ReqLLM.Response.text(response) || ""
@@ -120,6 +132,14 @@ defmodule AshHarness.Eval.Judge do
         end
     end
   end
+
+  defp stubbed_plug?(nil), do: false
+
+  defp stubbed_plug?(opts) when is_list(opts) do
+    Keyword.has_key?(opts, :plug)
+  end
+
+  defp stubbed_plug?(_), do: false
 
   # Convert string keys to atoms — but only atoms that already exist
   # (every criterion name has been declared at compile time, so its
