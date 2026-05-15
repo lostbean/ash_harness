@@ -1,4 +1,4 @@
-# Public API Surface (v0.1.0)
+# Public API Surface (v0.1.2)
 
 This is the function-level contract. Things outside this list are
 internal and may change between minor versions.
@@ -62,20 +62,29 @@ AshHarness.Reachability.edge_to?(graph, source, dest)     :: boolean()
 
 ```elixir
 AshHarness.ContextRenderer.render(agent, opts)            :: RenderedContext.t()
-AshHarness.ContextRenderer.render_resource(agent, resource, opts)
-                                                          :: String.t()
-AshHarness.ContextRenderer.resource_summary(agent, resource)
+AshHarness.ContextRenderer.render_resource(agent, resource, actor \\ nil)
                                                           :: String.t()
 ```
+
+`render_resource/3` takes the actor directly (not an `opts` keyword);
+the design's `opts` form is deferred to v0.2. `resource_summary/2` is
+not part of the public API — the `RenderedContext.resource_details`
+map populated by `render/2` covers the same use case.
 
 ## Tool generation
 
 ```elixir
-AshHarness.Tool.dynamic(name, opts)                       :: Jido.Action.t()
+AshHarness.Tool.dynamic(opts, extra \\ [])                :: AshHarness.Tool.t()
 AshHarness.Schema.Render.Anthropic.render(canonical)      :: map()
 AshHarness.Schema.Render.OpenAI.render(canonical)         :: map()
 AshHarness.Schema.Render.MCP.render(canonical)            :: map()
 ```
+
+`Tool.dynamic/2` returns an `AshHarness.Tool.t()` wrapper struct (with
+`:name`, `:description`, `:schema`, `:input_builder`, `:resource`,
+`:action`, `:canonical` fields). The harness routes the wrapper through
+the same `GeneratedAction.dispatch/5` pipeline as compile-time
+`Jido.Action` modules, so both share gate semantics.
 
 ## Harness runtime
 
@@ -105,10 +114,18 @@ AshHarness.Harness.Repair.retryable?(error)               :: boolean()
 ```elixir
 AshHarness.Delegation.initiate(caller_session, target_agent, question, opts) ::
     {:ok, String.t(), Session.t(), [TrajectoryEntry.t()]}
-  | {:error, :delegation_not_permitted}
-  | {:error, :delegation_depth_exceeded}
+  | {:error, %AshHarness.Errors.DelegationNotPermitted{}}
+  | {:error, %AshHarness.Errors.DelegationDepthExceeded{}}
+  | {:error, :delegate_halted}
   | {:error, term()}
 ```
+
+`AshHarness.Delegation.initiate/4` is a thin re-export of
+`AshHarness.Delegation.Initiate.run/4`. The `:delegate_halted` atom
+return is internal: the LLM-facing skill
+(`AshHarness.Delegation.Skill`) translates it into
+`{:error, "delegate halted: requires confirmation"}` so the parent
+agent's LLM sees a text tool result.
 
 ## Evaluation
 

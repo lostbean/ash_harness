@@ -11,41 +11,36 @@ disclosure — initially compact.
 
 ## Output structure
 
+The implementation collapses the design's original per-section fields
+into the four fields the rest of the runtime actually reads. The
+section-level data lives in the composed `initial_text` string.
+
 ```elixir
 defmodule AshHarness.RenderedContext do
   defstruct [
-    :agent_identity,
-    :domain_vocabulary,
-    :resource_summaries,
-    :resource_details,           # per-resource detail (for progressive load)
-    :traversal_map,
-    :strategies,
-    :delegation_hints,
-    :constraints,
-    :meta_tools_doc,             # docs for load_resource_skill etc.
-    :initial_text,               # what the orchestrator sees on turn 0
-    :token_estimate
+    :initial_text,
+    :token_estimate,
+    resource_details: %{},
+    warnings: []
   ]
 
   @type t :: %__MODULE__{
-    agent_identity:     String.t(),
-    domain_vocabulary:  String.t() | nil,
-    resource_summaries: %{module() => String.t()},
-    resource_details:   %{module() => String.t()},
-    traversal_map:      String.t(),
-    strategies:         String.t(),
-    delegation_hints:   String.t(),
-    constraints:        String.t(),
-    meta_tools_doc:     String.t(),
-    initial_text:       String.t(),
-    token_estimate:     non_neg_integer()
+    initial_text:     String.t(),
+    token_estimate:   non_neg_integer(),
+    resource_details: %{module() => String.t()},
+    warnings:         [String.t()]
   }
 end
 ```
 
-`initial_text` is the concatenated initial context (sections that always
-go in). `resource_details` is a map of module → expanded detail string,
-loaded on demand by `load_resource_skill`.
+`initial_text` is the concatenated initial context (identity, vocabulary,
+resource summaries, traversal map, strategies, delegation hints,
+constraints, meta-tools doc). `resource_details` is a map of module →
+expanded detail string, loaded on demand by `load_resource_skill`.
+`warnings` carries any non-fatal renderer notes (e.g. "token budget
+truncated strategies section"). Per-section composition is done by
+private helpers in `lib/ash_harness/context_renderer.ex` rather than the
+sub-module layout the design originally sketched.
 
 ## Initial vs expanded
 
@@ -70,13 +65,22 @@ defmodule AshHarness.ContextRenderer do
   @spec render(module(), keyword()) :: AshHarness.RenderedContext.t()
   def render(agent_module, opts \\ [])
 
-  @spec render_resource(module(), module(), keyword()) :: String.t()
-  def render_resource(agent_module, resource_module, opts \\ [])
-
-  @spec resource_summary(module(), module()) :: String.t()
-  def resource_summary(agent_module, resource_module)
+  @spec render_resource(module(), module(), term() | nil) :: String.t()
+  def render_resource(agent_module, resource_module, actor \\ nil)
 end
 ```
+
+`render_resource/3` takes the actor directly. The design originally
+specified an `opts` keyword form; the implementation went with the
+plainer `actor` arg because the only caller (`load_resource_skill`)
+just forwards the session actor. The `opts` form is deferred to v0.2
+if a second caller appears that needs more knobs.
+
+No `resource_summary/2` is exposed — `render/2` already populates
+`RenderedContext.resource_details[module]` with the per-resource detail
+strings, and there's no scenario in the codebase that wants a separate
+summary-only call. If one appears in v0.2, it'll be a thin wrapper
+over the section composer.
 
 ### Options
 

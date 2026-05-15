@@ -39,6 +39,14 @@ orchestrator (Jido)
 
 ### Per-intent gate events
 
+All five gates emit a `:checked` event on every evaluation (since
+v0.1.2), regardless of pass or fail, so listeners can compute pass-rates
+without OTel span sampling. The failure-class events (`:violation`,
+`:missing`, `:exceeded`, `:denied`) still fire on the refusal path.
+Every event metadata carries the shared `:request_id` so listeners can
+correlate all telemetry within a single `GeneratedAction.dispatch/5`
+call.
+
 ```
 [:ash_harness, :scope, :checked]
   measurements: %{}

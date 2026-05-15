@@ -23,7 +23,7 @@ Add the dependency:
 ```elixir
 def deps do
   [
-    {:ash_harness, "~> 0.1.0"}
+    {:ash_harness, "~> 0.1.2"}
   ]
 end
 ```
@@ -161,7 +161,13 @@ ASH_HARNESS_CASSETTE_MODE=record mix test test/my_eval_test.exs
 
 ## Status
 
-v0.1.0 is the first release. The public API is in
+v0.1.2 is the current stable release. v0.1.0 was the bootstrap; v0.1.1
+landed the supervised SessionAgent, real `mutation_count`, full
+trajectory log, per-(resource, action) repair caps, and Jido-native
+resume; v0.1.2 closes a design-vs-implementation audit (wires the
+delegation skill to the LLM, switches gates to structured errors,
+threads a `:request_id` through all telemetry, fires four `:checked`
+pass-events, and aligns design docs with code). The public API is in
 `design/implementation/public-api.md`; stable across v0.1.x patches.
 DynamicAgentNode-based progressive disclosure is deferred to v0.2
 (see Phase 0 notes in

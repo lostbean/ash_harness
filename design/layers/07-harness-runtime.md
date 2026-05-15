@@ -58,13 +58,23 @@ defmodule AshHarness.Harness.Session do
     :trajectory,           # [TrajectoryEntry.t()]
     :mutation_count,       # non_neg_integer
     :turn_number,          # non_neg_integer
-    :metadata,             # opaque
+    :metadata,             # opaque (carries :session_pid since v0.1.2)
     :request_id,           # binary
     :loaded_skills,        # MapSet of resource modules whose detail is loaded
     :options
   ]
 end
 ```
+
+Since v0.1.2, `SessionAgent.init/1` stamps `metadata.session_pid =
+self()` on the held state. Code that only has the snapshot `%Session{}`
+(for example, `AshHarness.Delegation.Initiate.run/4` called from the
+delegation skill after a `SessionAgent.get_state` lookup) can pull the
+pid back out and continue talking to the SessionAgent without
+threading an out-of-band pid handle. The orchestrator's tool-call
+context still carries the pid as `ctx[:ash_harness_session_pid]` —
+that path is the canonical one; `metadata.session_pid` is for code
+paths that only have the snapshot.
 
 ## Intent struct
 

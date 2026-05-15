@@ -20,50 +20,48 @@ defmodule AshHarness.Harness.ConfirmationGate do
   @spec check(Session.t(), Intent.t()) ::
           :ok | {:halt, ApprovalRequest.t()}
   def check(%Session{agent: agent} = session, %Intent{} = intent) do
-    cond do
-      not AgentInfo.confirms_action?(agent, intent.action) ->
-        :ok
+    if AgentInfo.confirms_action?(agent, intent.action) do
+      case approval_entry(session, intent) do
+        nil ->
+          emit_requested(agent, intent)
 
-      true ->
-        case approval_entry(session, intent) do
-          nil ->
-            emit_requested(agent, intent)
-
-            {:ok, request} =
-              ApprovalRequest.new(
-                prompt:
-                  "Agent #{inspect(agent)} requests approval to invoke " <>
-                    "#{inspect(intent.resource)}.#{intent.action}.",
-                allowed_responses: [:approved, :rejected],
-                metadata: %{
-                  agent: inspect(agent),
-                  resource: inspect(intent.resource),
-                  action: intent.action,
-                  input: intent.input,
-                  reasoning: intent.reasoning
-                }
-              )
-
-            {:halt, request}
-
-          entry ->
-            # v0.1.2: surface `respondent` + `duration_ms` from the
-            # stored approval entry. Falls back gracefully when the
-            # legacy bare-atom shape (`:approved`) is encountered.
-            Telemetry.emit(
-              [:ash_harness, :confirmation, :approved],
-              %{duration_ms: duration_ms(entry)},
-              %{
-                agent: agent,
-                resource: intent.resource,
+          {:ok, request} =
+            ApprovalRequest.new(
+              prompt:
+                "Agent #{inspect(agent)} requests approval to invoke " <>
+                  "#{inspect(intent.resource)}.#{intent.action}.",
+              allowed_responses: [:approved, :rejected],
+              metadata: %{
+                agent: inspect(agent),
+                resource: inspect(intent.resource),
                 action: intent.action,
-                respondent: respondent(entry),
-                request_id: intent.request_id
+                input: intent.input,
+                reasoning: intent.reasoning
               }
             )
 
-            :ok
-        end
+          {:halt, request}
+
+        entry ->
+          # v0.1.2: surface `respondent` + `duration_ms` from the
+          # stored approval entry. Falls back gracefully when the
+          # legacy bare-atom shape (`:approved`) is encountered.
+          Telemetry.emit(
+            [:ash_harness, :confirmation, :approved],
+            %{duration_ms: duration_ms(entry)},
+            %{
+              agent: agent,
+              resource: intent.resource,
+              action: intent.action,
+              respondent: respondent(entry),
+              request_id: intent.request_id
+            }
+          )
+
+          :ok
+      end
+    else
+      :ok
     end
   end
 

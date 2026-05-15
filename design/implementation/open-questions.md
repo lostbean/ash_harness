@@ -18,117 +18,169 @@ If the ecosystem has shifted, revisit the positioning.
 
 ### 2. Verify Jido Composer API surface details
 
-Spot-check the following against current `jido_composer` source:
-
-- The exact return shape of `Jido.Composer.Skill.assemble/2`.
-- The exact suspension/resume API for HITL.
-- Whether `LLMStub` is publicly exposed or test-only.
-- The model-string format (`"anthropic:claude-…"`).
-- OTel span hierarchy (whether AshHarness can attach attributes to
-  the active span without ceremony).
-
-If any of these differ from what `architecture/jido-integration.md`
-assumes, update that doc *and* the harness module before
-implementation.
+**RESOLVED (v0.1.1, 2026-05-15).** All five sub-questions are settled
+in `lib/ash_harness/harness.ex` (lines 100–132 build the orchestrator
+via `Jido.Composer.Skill.assemble/2` and `configure/2`; lines 423–438
+use `Jido.Composer.Orchestrator.DSL.__query_sync_loop__/3` directly for
+the resume path because `Composer.Resume.resume/4`'s `deliver_resume/4`
+internal step doesn't fit our suspension shape) and in
+`lib/ash_harness/harness/orchestrator_factory.ex` (model-string format
+`"anthropic:claude-sonnet-4-5"`, etc.). `LLMStub` is publicly exposed —
+the τ-bench airline runner depends on it. OTel attachment via
+`OpenTelemetry.Tracer.set_attributes/1` works in-line within the
+tool-call context (see `lib/ash_harness/telemetry.ex:152`); we attach
+to the active Jido span without spawning our own.
 
 ### 3. τ-bench current shape
 
-`benchmark/tau-bench-airline-port.md` is sketched from memory. Before
-Phase 7, fetch the current τ-bench airline domain:
-
-- Schema (resources, fields).
-- Policy document text.
-- Task suite JSON.
-- Scoring rules.
-
-Update the port doc with the current shape.
+**PARTIALLY RESOLVED (v0.1.1, 2026-05-15).** The 10-scenario τ-bench
+airline port lives at `benchmarks/tau_bench_airline/` with Ash
+resources (`User`, `Flight`, `Reservation`, …), the airline policy
+document (`benchmarks/tau_bench_airline/priv/policy.md`), and JSON
+fixtures replayed from the upstream task suite. Three scenarios
+(`change_flight`, `cancel_economy`, `refuse_basic_cancel`) are driven
+end-to-end via cassettes with real `gate :resource_state` assertions;
+**still open**: the remaining seven scenarios are placeholders pending
+cassette recording (v0.2 target), and the τ-bench %-score parity
+question (Q#19) is unmet.
 
 ## Must answer during Phase 1
 
 ### 4. Spark version compatibility
 
-The agent module's `use AshHarness.Agent` macro is a Spark DSL.
-Confirm `Spark.Dsl` v2.x's `default_extensions` mechanism still works
-the way the spec assumes. If Spark has changed the recommended
-pattern, update `layers/03-agent-dsl.md`.
+**RESOLVED (v0.1.0, 2026-05-15).** Spark v2.x's `default_extensions`
+mechanism works as the spec assumed. `lib/ash_harness/agent.ex` and
+`lib/ash_harness/agent/dsl.ex` use the standard pattern with
+`Spark.Dsl.Extension`, `Spark.Dsl.Section`, and `Spark.Dsl.Entity`
+without any v2.x-specific workarounds. The agent, resource, and domain
+DSLs all compile under Spark `~> 2.0` declared in `mix.exs`.
 
 ### 5. How do we propagate session into generated `Jido.Action.run/2`?
 
-The dispatch needs `session` from `ctx`. Confirm that
-`Jido.Composer.Orchestrator` passes a context map into tool calls
-(it should — that's standard). If we need to add a "session
-injector" interceptor or use a process dictionary, document and
-revise `layers/07-harness-runtime.md`.
+**RESOLVED (v0.1.1, 2026-05-15).** The SessionAgent's pid travels
+through the orchestrator's tool-call context as
+`ctx[:ash_harness_session_pid]` (see `lib/ash_harness/harness.ex:102`).
+Generated actions call `SessionAgent.get_state(pid)` to pull the
+current `%Session{}` snapshot. v0.1.2 additionally stamps
+`metadata.session_pid = self()` in `SessionAgent.init/1`
+(`lib/ash_harness/harness/session_agent.ex:141`) so code paths that
+only have a snapshot (e.g. `Delegation.Initiate.run/4` invoked from
+`Delegation.Skill`) can still reach the GenServer. No process
+dictionary, no injector — just `ctx`.
 
 ## Must answer during Phase 2
 
 ### 6. Token estimation tokenizer
 
-`byte_size / 4` is a rough heuristic. Is there a Jido or hex tokenizer
-package we should depend on for higher accuracy? `tiktoken` Elixir
-ports? Defer if no lightweight option exists.
+**Still open.** v0.1.0 shipped `byte_size / 4` in
+`lib/ash_harness/context_renderer/token_estimate.ex` and no caller has
+needed better precision yet (the renderer's only token-budget consumer
+truncates whole sections, not tokens). When we add streaming or
+finer-grained budget enforcement in v0.2, swap in a behaviour and
+ship a `tiktoken`-backed default.
 
 ### 7. What does Ash 3.x return when `Ash.can?` returns `:maybe`?
 
-For renderer pre-filtering, we render actions where `Ash.can?` is
-`true` or `:maybe` and exclude `false`. Verify the exact API.
+**RESOLVED (v0.1.0, 2026-05-15).** `Ash.can?({resource, action, input},
+actor)` returns `true | false | :maybe`. The policy gate at
+`lib/ash_harness/harness/policy_gate.ex:91` calls it once per
+dispatch and treats `false` as denial; both `true` and `:maybe` pass.
+The renderer at `lib/ash_harness/context_renderer.ex:343` mirrors this
+— actions for which `Ash.can?({resource, action.name}, actor)` returns
+`false` are pre-filtered out of the rendered detail; `:maybe` actions
+are kept (we let policy decide at execution time when the real input
+is available).
 
 ## Must answer during Phase 3
 
 ### 8. Resource short-name conflict resolution
 
-If two resources have the same suffix (`MyApp.A.Order` and
-`MyApp.B.Order`), the spec says we add `as: "..."` aliases. Confirm:
-
-- Does `Ash.Resource.Info` give us a unique short name we can default
-  to? (Probably the last segment.)
-- Should the verifier auto-suggest an alias on conflict?
+**Still open for resources; resolved for delegate aliases.** Delegates
+got an explicit `as:` alias DSL in v0.1.2 with a dedicated verifier
+(`AshHarness.Agent.Verifiers.DelegateAliasesUnique`) that rejects
+duplicates case-insensitively. Resource short-name conflicts (e.g.
+`MyApp.A.Order` vs `MyApp.B.Order` both rendering as `order` in the
+context) are **still open** — neither the renderer nor the agent DSL
+disambiguates today; in practice the canonical schema renders use the
+full module name in tool names (`order__place`) so the LLM-facing
+surface is unambiguous, but the human-readable text in the system
+prompt would benefit from a `display_as:` knob in v0.2.
 
 ### 9. Generic action input normalization
 
-Generic actions (`action :foo, :map do … end`) have argument
-declarations but the dispatch is via `Ash.run_action/2`. Confirm the
-canonical input shape and that the schema generator works for them.
+**Partially resolved.** Generic actions are supported in the schema
+generator (`lib/ash_harness/schema.ex`) and dispatch (the action
+executor falls through to Ash's standard input shaping). **Still open
+within Q#9**: embedded resources are mapped to a generic `:object` in
+`lib/ash_harness/schema/ash_type_mapper.ex:73` rather than being
+recursed into. For nested embedded shapes the LLM sees an opaque
+`object` schema. Tightening to recursive nested-object schemas is a
+v0.2 task.
 
 ### 10. Read action filter parameters
 
-The spec says `:read` actions accept a `filter` map keyed by public
-attributes, and we build an `Ash.Query` at execution. Spec out:
-
-- The exact JSON Schema shape for `filter`.
-- Operator support (eq, lt, gt, in, between).
-- How sort and pagination are exposed (or whether they're separate
-  meta-tools).
+**Still open.** v0.1.x exposes read-action arguments to the LLM as
+typed scalar params (per the canonical schema). The richer `filter`
+map shape, operator menu (`eq`, `lt`, `gt`, `in`, `between`), and
+sort/pagination meta-tools described in the spec are deferred to v0.2.
+For now read actions only take their explicit argument list; if a
+project needs cross-attribute filtering it ships an action that
+accepts pre-shaped arguments. Filter DSL is a v0.2 milestone.
 
 ## Must answer during Phase 4
 
 ### 11. Confirmation flow round-trip
 
-The spec assumes `{:halt, ApprovalRequest}` from a `Jido.Action.run/2`
-becomes a suspension that the host app handles. Verify with Jido docs
-whether `run/2` may return a halt directive or whether we need a
-different mechanism.
+**RESOLVED (v0.1.1, 2026-05-15).** Jido's orchestrator strategy is
+now the primary HITL halter; `AshHarness.Harness.ConfirmationGate`
+acts as the defensive secondary. `Harness.run/3` calls Jido's loop
+and surfaces a `%Suspension{}` if pending; `Harness.resume/2` hands
+the `%ApprovalResponse{}` straight to
+`Jido.Composer.Orchestrator.DSL.__query_sync_loop__/3` so the
+orchestrator continues from its suspension point
+(`lib/ash_harness/harness.ex:423–438`). The session's
+`metadata.approvals` map records the decision +
+`respondent` + `recorded_at` so `ConfirmationGate.check/3` on the
+post-resume re-entry sees the satisfied approval.
 
 ### 12. How is mutation_count tracked across `run`/`resume`?
 
-When `run/2` halts on a confirmation, the mutation count so far is in
-the session. After `resume/2`, the count continues. Verify that this
-holds when Jido's checkpointing serializes the session.
+**RESOLVED (v0.1.1, 2026-05-15).** Mutation count lives in the
+supervised `SessionAgent` GenServer
+(`lib/ash_harness/harness/session_agent.ex:159–161`), not in any
+checkpointed payload. The `%Session{}` snapshot returned to host code
+is rebuilt from the GenServer's state at turn boundaries, and Jido's
+suspension/resume threads the SessionAgent pid through `ctx`, so the
+count is preserved across `run` → halt → `resume` without depending on
+Jido's serialization. The budget gate reads the live value from the
+GenServer before each tool call (`harness/budget_gate.ex:22`) and the
+session bumps after a successful mutation.
 
 ### 13. Hot reload behavior
 
-What happens when an agent module recompiles in dev while a session
-holds a stale orchestrator reference? Document the recommended pattern
-(probably: `Phoenix.CodeReloader` users invalidate sessions on reload).
+**Still open as policy; documented as "build a fresh session".** The
+session struct's `:jido_orchestrator` field can become stale when the
+agent module is recompiled — there's no auto-invalidation. The
+documented stance lives in `design/layers/07-harness-runtime.md`
+("Hot reload" section): users restart the IEx node or call
+`new_session/2` to refresh. For Phoenix apps that hot-reload in dev,
+the recommended pattern is to drop sessions on reload (via a
+`Phoenix.CodeReloader` hook). A formal API for "invalidate by agent
+module" would be a v0.2 nicety; not blocking.
 
 ## Must answer during Phase 5
 
 ### 14. OTel span attribute attachment
 
-Confirm `OpenTelemetry.Tracer.set_attributes/1` works inside a Jido
-orchestrator's tool-call context — i.e., we can add attributes to the
-active span Jido created. If not, we may need to start our own child
-span.
+**RESOLVED (v0.1.0, 2026-05-15).** Works as the spec assumed. The
+attachment helper at `lib/ash_harness/telemetry.ex:152` calls
+`apply(:otel_span, :set_attributes, [...])` against the active span
+provided by Jido — it's a no-op when no span is active (so tests
+without OTel set up don't crash). The full attribute set listed in
+`design/layers/11-telemetry.md` (`ash_harness.agent`,
+`ash_harness.resource`, `ash_harness.scope.passed`,
+`ash_harness.policy.passed`, etc., plus the v0.1.2 `request.id`)
+attaches without needing a child span.
 
 ### 15. Telemetry event handlers and crash isolation
 
@@ -139,16 +191,28 @@ Document handler-error policy.
 
 ### 16. Eval transactional isolation
 
-For ETS, how do we sandbox so scenarios don't pollute each other? Per
-test: new ETS table? `Ash.DataLayer.Ets.SandboxTable`? Document.
-
-For Postgres: standard `Ash.Test` setup with `:async`.
+**RESOLVED for ETS (v0.1.1, 2026-05-15); still open for Postgres.**
+`AshHarness.Eval.Sandbox.open/1` opens a per-process private ETS
+table for each ETS-backed resource so scenarios don't share state
+(`lib/ash_harness/eval/sandbox.ex`); the runner calls
+`Sandbox.open/1` → `scenario.setup` → `with_cassette` →
+`Harness.run/3` loop. AshPostgres integration (real DB sandboxing
+via `Ash.Test`) is still on the v0.2 follow-up list; the design's
+"Postgres: standard `Ash.Test` setup with `:async`" plan stands.
 
 ### 17. Judge model cost accounting
 
-If qualitative reports run on Anthropic Claude Opus, costs add up
-fast for full eval suites. Should we cache judge responses by
-(scenario, criterion, agent_response_hash)? Probably yes — design.
+**Partially resolved.** `lib/ash_harness/eval/judge.ex` calls the
+judge LLM at most once per qualitative report (one batched JSON
+response covering every criterion in the block) — that batching cuts
+N calls down to one. Default `mix test` doesn't hit the judge (the
+runner short-circuits when `judge_model` is unset). Cassette replay
+covers cost in the test suite. **Still open**: an explicit
+content-addressable cache by `(scenario, criterion,
+agent_response_hash)` is not implemented; for nightly real-LLM eval
+runs we rely on the cassette store rather than a separate judge
+cache. Build a dedicated cache layer if real-LLM eval-suite costs
+become a problem.
 
 ## Must answer during Phase 7
 

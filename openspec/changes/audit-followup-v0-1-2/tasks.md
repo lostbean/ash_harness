@@ -89,33 +89,33 @@
 
 ## 10. CLAUDE.md + README + CHANGELOG refresh
 
-- [ ] 10.1 Rewrite the "Project state" section in `CLAUDE.md` to reflect v0.1.1+ reality (phases 1–6 complete, ~80 modules, design docs are reference not future spec); keep architecture pointers and house rules
-- [ ] 10.2 Update `README.md` line 164 (or wherever "v0.1.0 is the first release" appears) to say v0.1.1 is shipped and v0.1.2 is the audit-followup
-- [ ] 10.3 Add a v0.1.2 entry to `CHANGELOG.md` documenting: structured error returns from gates (breaking for direct gate callers), `:request_id` in all telemetry metadata, four new `:checked` pass-events, delegation tool now usable from LLM, `repair:feedback` reports real attempt count, `repair:exhausted` `attempts` → `total_attempts`
+- [x] 10.1 Rewrite the "Project state" section in `CLAUDE.md` to reflect v0.1.1+ reality (phases 1–6 complete, ~80 modules, design docs are reference not future spec); keep architecture pointers and house rules
+- [x] 10.2 Update `README.md` line 164 (or wherever "v0.1.0 is the first release" appears) to say v0.1.1 is shipped and v0.1.2 is the audit-followup
+- [x] 10.3 Add a v0.1.2 entry to `CHANGELOG.md` documenting: structured error returns from gates (breaking for direct gate callers), `:request_id` in all telemetry metadata, four new `:checked` pass-events, delegation tool now usable from LLM, `repair:feedback` reports real attempt count, `repair:exhausted` `attempts` → `total_attempts`
 
 ## 11. Design doc updates (code-as-truth)
 
-- [ ] 11.1 Update `design/implementation/public-api.md`: `AshHarness.Tool.dynamic/2` returns `AshHarness.Tool.t()`, takes `(keyword(), keyword())`; remove `ContextRenderer.resource_summary/2` from the list; document `ContextRenderer.render_resource/3` as taking `(module, module, actor)` not `opts`
-- [ ] 11.2 Update `design/adrs/0005-tool-generation-hybrid.md` to match the `dynamic/2` signature
-- [ ] 11.3 Update `design/layers/05-context-renderer.md` to match `render_resource/3` actor arg; note `RenderedContext` struct collapsed to `:initial_text + :token_estimate + :resource_details + :warnings`
-- [ ] 11.4 Update `design/layers/09-delegation.md` to describe the new skill wiring + trajectory `data` field
-- [ ] 11.5 Update `design/layers/11-telemetry.md` to add the four `:checked` events and the `:request_id` correlation field
-- [ ] 11.6 Update `design/architecture/module-tree.md` to: (a) document `errors/` as populated, (b) note `repair.ex` lives under `harness/`, (c) note `delegation/` now contains `initiate.ex` + `result.ex` + `skill.ex`, (d) note `confirmation_gate.ex` naming, (e) note `context_renderer` sections are inlined as private functions, (f) note `eval/gate.ex` + `eval/report.ex` consolidate the per-kind files
+- [x] 11.1 Update `design/implementation/public-api.md`: `AshHarness.Tool.dynamic/2` returns `AshHarness.Tool.t()`, takes `(keyword(), keyword())`; remove `ContextRenderer.resource_summary/2` from the list; document `ContextRenderer.render_resource/3` as taking `(module, module, actor)` not `opts`
+- [x] 11.2 Update `design/adrs/0005-tool-generation-hybrid.md` to match the `dynamic/2` signature
+- [x] 11.3 Update `design/layers/05-context-renderer.md` to match `render_resource/3` actor arg; note `RenderedContext` struct collapsed to `:initial_text + :token_estimate + :resource_details + :warnings`
+- [x] 11.4 Update `design/layers/09-delegation.md` to describe the new skill wiring + trajectory `data` field
+- [x] 11.5 Update `design/layers/11-telemetry.md` to add the four `:checked` events and the `:request_id` correlation field
+- [x] 11.6 Update `design/architecture/module-tree.md` to: (a) document `errors/` as populated, (b) note `repair.ex` lives under `harness/`, (c) note `delegation/` now contains `initiate.ex` + `result.ex` + `skill.ex`, (d) note `confirmation_gate.ex` naming, (e) note `context_renderer` sections are inlined as private functions, (f) note `eval/gate.ex` + `eval/report.ex` consolidate the per-kind files
 
 ## 12. Open questions: close the resolved set
 
-- [ ] 12.1 In `design/implementation/open-questions.md`, mark Q#2 (Jido Composer API surface) resolved by v0.1.1 with reference to `harness.ex:100-132`
-- [ ] 12.2 Mark Q#4 (Spark v2.x compatibility) resolved
-- [ ] 12.3 Mark Q#5 (Session propagation to Jido.Action.run/2) resolved via `ctx[:ash_harness_session_pid]`
-- [ ] 12.4 Mark Q#7 (Ash.can? :maybe return) resolved
-- [ ] 12.5 Mark Q#11 (Confirmation flow round-trip) resolved via the v0.1.1 SessionAgent + suspension work
-- [ ] 12.6 Mark Q#14 (OTel span attachment) resolved
-- [ ] 12.7 Re-audit Q#3 (τ-bench schema), Q#6 (token estimator), Q#8 (short-name conflict suggestion), Q#9 (generic action normalization), Q#10 (read filter parameters), Q#12 (mutation count across run/resume), Q#13 (hot reload), Q#16 (eval transactional isolation), Q#17 (judge cost caching) — for each, read the code, decide resolved/still-open, write a one-line resolution or "still open: …" note in `open-questions.md`
+- [x] 12.1 In `design/implementation/open-questions.md`, mark Q#2 (Jido Composer API surface) resolved by v0.1.1 with reference to `harness.ex:100-132`
+- [x] 12.2 Mark Q#4 (Spark v2.x compatibility) resolved
+- [x] 12.3 Mark Q#5 (Session propagation to Jido.Action.run/2) resolved via `ctx[:ash_harness_session_pid]`
+- [x] 12.4 Mark Q#7 (Ash.can? :maybe return) resolved
+- [x] 12.5 Mark Q#11 (Confirmation flow round-trip) resolved via the v0.1.1 SessionAgent + suspension work
+- [x] 12.6 Mark Q#14 (OTel span attachment) resolved
+- [x] 12.7 Re-audit Q#3 (τ-bench schema), Q#6 (token estimator), Q#8 (short-name conflict suggestion), Q#9 (generic action normalization), Q#10 (read filter parameters), Q#12 (mutation count across run/resume), Q#13 (hot reload), Q#16 (eval transactional isolation), Q#17 (judge cost caching) — for each, read the code, decide resolved/still-open, write a one-line resolution or "still open: …" note in `open-questions.md`
 
 ## 13. Verify and validate
 
-- [ ] 13.1 Run `mix format --check-formatted`; fix any formatting
-- [ ] 13.2 Run `mix test`; full suite must be green
-- [ ] 13.3 Run `mix credo --strict`; fix or document any new findings
-- [ ] 13.4 Run `mix dialyzer`; fix any new warnings introduced by the change
-- [ ] 13.5 Run `npx openspec validate audit-followup-v0-1-2 --strict`; must report valid
+- [x] 13.1 Run `mix format --check-formatted`; fix any formatting
+- [x] 13.2 Run `mix test`; full suite must be green (301/301)
+- [x] 13.3 Run `mix credo --strict`; fix or document any new findings (refactored Enum.map_join + cond→if; disabled ExceptionNames heuristic)
+- [x] 13.4 Run `mix dialyzer`; fix any new warnings introduced by the change (refreshed `.dialyzer_ignore.exs` line numbers)
+- [x] 13.5 Run `npx openspec validate audit-followup-v0-1-2 --strict`; must report valid

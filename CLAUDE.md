@@ -4,17 +4,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-This repo is a **design-stage Elixir scaffold**. `lib/` and `test/` contain
-only placeholder code (`AshHarness.hello/0`). The substantive work lives
-under `design/` — a 35-file hierarchical spec for what the library will
-become.
+v0.1.2 is the current stable release. Phases 1–6 of the implementation
+plan have landed: resource/domain DSL extensions, agent DSL, reachability
+graph, context renderer with progressive disclosure, canonical schema +
+three renderers, compile-time `Jido.Action`/`Skill` generation, the full
+gate pipeline (scope → reasoning → confirmation → budget → policy),
+repair loop, cross-agent delegation (now LLM-invokable via a wired skill),
+telemetry with OTel attribute attachment, and the eval framework. The
+codebase is ~90 modules under `lib/ash_harness/` plus ~95 test files; the
+τ-bench airline port lives at `benchmarks/tau_bench_airline/`. The
+`design/` folder is **reference documentation**, not a future-state spec —
+treat it as authoritative for *intent* and `lib/`/`test/` as authoritative
+for *what is actually shipped*. Where the two disagree, the audit-followup
+change (`openspec/changes/audit-followup-v0-1-2/`) records which side won
+and why.
 
-Before writing implementation code, **read `design/README.md`**. It is the
-canonical entry point and indexes every other doc. Treat it as the
-authoritative architecture reference. The original `AshAgent` spec the
-user pasted into the first conversation is **superseded** by the design
-folder; deviations from that spec (renames, scope changes, runtime choice)
-are documented in `design/adrs/`.
+Quick-jump table to the most-touched code locations:
+
+| Concern | Code |
+| --- | --- |
+| Runtime entry point | `lib/ash_harness/harness.ex` (`new_session/2`, `run/3`, `resume/2`) |
+| Dispatch + gates | `lib/ash_harness/harness/generated_action.ex` |
+| Structured errors | `lib/ash_harness/errors/` (seven `defexception` structs) |
+| Session state | `lib/ash_harness/harness/session_agent.ex` (supervised GenServer) |
+| Compile-time tools | `lib/ash_harness/tool_gen/` (action + skill + orchestrator modules) |
+| Delegation skill | `lib/ash_harness/delegation/skill.ex` (Jido.Action) |
+| Telemetry | `lib/ash_harness/telemetry.ex` + every `*_gate.ex` |
+| Eval runner | `lib/ash_harness/eval/runner.ex` |
+
+The original `AshAgent` spec the user pasted into the first conversation
+is **superseded** by the design folder; deviations from that spec
+(renames, scope changes, runtime choice) are documented in `design/adrs/`.
 
 ## What AshHarness is
 

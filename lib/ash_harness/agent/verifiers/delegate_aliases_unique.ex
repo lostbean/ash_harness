@@ -48,10 +48,8 @@ defmodule AshHarness.Agent.Verifiers.DelegateAliasesUnique do
   defp normalize(s) when is_binary(s), do: String.downcase(s)
 
   defp format_conflicts(entries) do
-    entries
-    |> Enum.map(fn %DelegateEntry{agent_module: m, as: a} ->
+    Enum.map_join(entries, ", ", fn %DelegateEntry{agent_module: m, as: a} ->
       "#{inspect(m)} (as: #{inspect(a)})"
     end)
-    |> Enum.join(", ")
   end
 end

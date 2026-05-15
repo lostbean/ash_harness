@@ -63,10 +63,20 @@ SHALL also appear in the `[:ash_harness, :delegation, :started]` and
 
 `AshHarness.Delegation.initiate/4` SHALL accept the caller's session,
 a target agent module, a question string, and options, and SHALL
-return one of `{:ok, reply, updated_caller_session,
-target_trajectory}`, `{:error, %AshHarness.Errors.DelegationNotPermitted{}}`,
-`{:error, :delegation_depth_exceeded}`, or `{:error, term()}`. The
-function SHALL live in `AshHarness.Delegation.Initiate` and be
+return one of:
+
+- `{:ok, reply, updated_caller_session, target_trajectory}` on success
+- `{:error, %AshHarness.Errors.DelegationNotPermitted{from, to, reason}}`
+  when the target is not in the caller's `delegates_to` list
+- `{:error, %AshHarness.Errors.DelegationDepthExceeded{from, to, depth,
+  max_depth}}` when the delegation depth cap is exceeded
+- `{:error, :delegate_halted}` when the child session suspended on its
+  own HITL (an internal atom — the LLM-facing skill translates this to
+  `{:error, "delegate halted: requires confirmation"}` so the parent
+  agent's LLM sees text, never an atom)
+- `{:error, term()}` for any other downstream failure
+
+The function SHALL live in `AshHarness.Delegation.Initiate` and be
 re-exported from `AshHarness.Delegation` for backward compatibility.
 
 #### Scenario: Permitted delegation succeeds
@@ -82,3 +92,19 @@ re-exported from `AshHarness.Delegation` for backward compatibility.
 - **THEN** the call returns `{:error,
   %AshHarness.Errors.DelegationNotPermitted{from: A, to: B}}` and no
   B session is created
+
+#### Scenario: Delegation depth exceeded returns struct
+- **WHEN** A calls `initiate/4` and the running depth equals
+  `max_depth`
+- **THEN** the call returns `{:error,
+  %AshHarness.Errors.DelegationDepthExceeded{from: A, to: B, depth: n,
+  max_depth: max}}` and no further B session is created
+
+#### Scenario: Skill translates child-halt to text error
+- **WHEN** the child agent suspends on its own ApprovalRequest during
+  a delegation call
+- **THEN** `Initiate.run/4` returns `{:error, :delegate_halted}` and
+  `AshHarness.Delegation.Skill` translates that atom into
+  `{:error, "delegate halted: requires confirmation"}` for the LLM
+  tool result. Nested HITL is deferred — the child's suspension stays
+  on the child; the parent agent does not see an ApprovalRequest.

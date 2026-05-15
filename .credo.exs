@@ -37,7 +37,16 @@
 
         # Tightenings appropriate to this codebase:
         {Credo.Check.Warning.IExPry, []},
-        {Credo.Check.Warning.IoInspect, []}
+        {Credo.Check.Warning.IoInspect, []},
+
+        # Disable the consistency-check on exception names. The check's
+        # heuristic picks the lexically-first prefix it sees as the
+        # canonical strategy; with two `Delegation*` errors in the set
+        # it then flags every other `AshHarness.Errors.<Verb>` exception
+        # (the standard suffix-only naming) as inconsistent. The actual
+        # naming convention here — verb/noun suffix under
+        # `AshHarness.Errors.*` — is exactly what `Splode` expects.
+        {Credo.Check.Consistency.ExceptionNames, false}
       ]
     }
   ]

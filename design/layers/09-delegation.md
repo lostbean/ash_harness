@@ -22,23 +22,50 @@ within trust zone, text across).
 ```elixir
 delegates_to do
   delegate MyApp.Agents.BillingAgent,
+    as: "billing",
     for: "customer account status checks"
 end
 ```
 
-The natural-language `for:` description is rendered into agent A's
-context as a delegation hint:
+The `as:` value (required since v0.1.2) is the case-insensitive alias
+the LLM passes to the `delegate` skill — it picks the matching entry
+out of the agent's `delegates_to` list. A compile-time verifier
+(`AshHarness.Agent.Verifiers.DelegateAliasesUnique`) rejects duplicate
+aliases. The natural-language `for:` description is rendered into
+agent A's context as a delegation hint:
 
 ```
 You can delegate to:
-- BillingAgent — for customer account status checks
+- BillingAgent (as "billing") — for customer account status checks
 ```
 
 ## How the agent invokes delegation
 
-A meta-tool `delegate(target_agent_name, question)` is added to A's tool
-list when `delegates_to` is non-empty. Calling it triggers
-`AshHarness.Delegation.initiate/3` (host-app-mediated; see flow below).
+`AshHarness.Delegation.Skill` is a single dynamic `Jido.Action` taking
+`(target: string, question: string)`. It's appended to the
+orchestrator's tool list — by `OrchestratorFactory.build/1` and the
+generated `tool_nodes/0` — whenever the agent's `delegates_to` is
+non-empty. The skill is **not** gated by `requires_approval`.
+
+When the LLM invokes the skill:
+
+1. The skill resolves `target` against the agent's `:as` aliases
+   (case-insensitive exact match). On no match it returns
+   `{:error, "Unknown delegate target '<target>'. Available aliases:
+   <list>"}` so the LLM sees a clean error tool result.
+2. On match it calls `AshHarness.Delegation.initiate/4`.
+3. The skill forwards a small subset of the parent session's opts —
+   `[:req_options, :temperature, :max_tokens, :max_iterations]` — to
+   the child. This is what makes a host that wires an LLM stub for
+   the parent see the same stub on the child (LLMStub-backed tests
+   work end-to-end without per-agent fixtures).
+4. On `{:error, :delegate_halted}` (the child suspended on its own
+   HITL) the skill returns
+   `{:error, "delegate halted: requires confirmation"}` — the
+   nested-HITL deferral described in
+   `openspec/changes/audit-followup-v0-1-2/design.md`. The host
+   agent's LLM sees a string tool error; the child's suspension stays
+   on the child. Multi-tier approval workflows are v0.2.
 
 ## Flow
 
@@ -95,12 +122,20 @@ defmodule AshHarness.Delegation do
   ) ::
     {:ok, reply :: String.t(), updated_caller_session :: AshHarness.Harness.Session.t(),
      target_trajectory :: [AshHarness.Harness.TrajectoryEntry.t()]}
-    | {:error, :delegation_not_permitted}
-    | {:error, :delegation_depth_exceeded}
+    | {:error, %AshHarness.Errors.DelegationNotPermitted{}}
+    | {:error, %AshHarness.Errors.DelegationDepthExceeded{}}
+    | {:error, :delegate_halted}
     | {:error, term()}
   def initiate(caller_session, target_agent_module, question, opts \\ [])
 end
 ```
+
+Since v0.1.2 the function lives in `AshHarness.Delegation.Initiate` and
+`AshHarness.Delegation.initiate/4` is a thin re-export. The error path
+returns the structured `%DelegationNotPermitted{from, to, reason}` /
+`%DelegationDepthExceeded{from, to, depth, max_depth}` structs.
+`:delegate_halted` is an internal atom — the LLM-facing skill
+translates it to text (see "How the agent invokes delegation").
 
 ## Depth limit
 
@@ -110,8 +145,10 @@ counter. The harness's `new_session/2` accepts an internal
 new session. Default cap is 3 (configurable via
 `config :ash_harness, :delegation_max_depth`).
 
-When exceeded, `initiate/4` returns `{:error, :delegation_depth_exceeded}`,
-which the calling tool surfaces to the LLM as a string.
+When exceeded, `initiate/4` returns
+`{:error, %AshHarness.Errors.DelegationDepthExceeded{from, to, depth,
+max_depth}}`, which the delegation skill surfaces to the LLM as a
+string (the struct's `Exception.message/1`).
 
 ## What is and isn't shared
 
@@ -162,13 +199,18 @@ delegate behavior.
 
 ```elixir
 defmodule AshHarness.Errors.DelegationNotPermitted do
-  defexception [:from_agent, :to_agent, :message]
+  defexception [:from, :to, :reason]
 end
 
 defmodule AshHarness.Errors.DelegationDepthExceeded do
-  defexception [:from_agent, :to_agent, :depth, :max_depth, :message]
+  defexception [:from, :to, :depth, :max_depth]
 end
 ```
+
+Both modules live under `lib/ash_harness/errors/` and are part of the
+seven-struct errors tree (`AshHarness.Errors.classify/1` maps them to
+their Splode class). `Exception.message/1` produces the human-readable
+text the delegation skill surfaces to the LLM.
 
 ## Open questions
 

@@ -33,8 +33,13 @@ Hybrid approach:
    one `Jido.Action` module per scoped (resource, action) pair, packed
    into one `Jido.Composer.Skill` per resource.
 2. **Escape hatch (runtime)**: `AshHarness.Tool.dynamic/2` builds an
-   additional `Jido.Action` at session-start time. Used for tools that
-   need session context to define.
+   additional **`AshHarness.Tool.t()`** wrapper at session-start time
+   carrying the schema, the dispatch target `(resource, action)`, and an
+   optional `input_builder`. The wrapper routes through
+   `AshHarness.Harness.GeneratedAction.dispatch/5` (same path as
+   compile-time `Jido.Action` modules), so it sees the same gates and
+   the same telemetry. The signature is
+   `dynamic(keyword(), keyword()) :: AshHarness.Tool.t()`.
 
 Both flow through the **same** scope/reasoning/budget/policy/executor
 pipeline. The runtime API does not bypass any gate.
