@@ -34,10 +34,10 @@ defmodule AshHarness.Harness.ConfirmationResumeTest do
       assert {:ok, :resumed, updated_session} = Harness.resume(session, response)
 
       key = {AshHarness.Test.Ticket, :assign}
-      assert %{approvals: %{^key => :approved}} = updated_session.metadata
+      assert %{approvals: %{^key => %{decision: :approved}}} = updated_session.metadata
 
       held = SessionAgent.get_state(pid)
-      assert %{approvals: %{^key => :approved}} = held.metadata
+      assert %{approvals: %{^key => %{decision: :approved}}} = held.metadata
     end
 
     test "rejected response is also persisted before re-running" do
@@ -64,7 +64,7 @@ defmodule AshHarness.Harness.ConfirmationResumeTest do
 
       assert {:ok, :resumed, updated_session} = Harness.resume(session, response)
       key = {AshHarness.Test.Ticket, :assign}
-      assert %{approvals: %{^key => :rejected}} = updated_session.metadata
+      assert %{approvals: %{^key => %{decision: :rejected}}} = updated_session.metadata
     end
   end
 

@@ -19,11 +19,27 @@ defmodule AshHarness.Harness.ReasoningGate do
         %Session{agent: agent},
         %Intent{action: action, reasoning: reasoning} = intent
       ) do
+    required? = AgentInfo.reasoning_required?(agent, action)
+    present? = is_binary(reasoning) and byte_size(reasoning) > 0
+
+    # v0.1.2: always emit `:checked` so pass-rate listeners see both
+    # the required and present booleans regardless of the outcome.
+    Telemetry.emit(
+      [:ash_harness, :reasoning, :checked],
+      %{required: required?, present: present?},
+      %{
+        agent: agent,
+        resource: intent.resource,
+        action: action,
+        request_id: intent.request_id
+      }
+    )
+
     cond do
-      not AgentInfo.reasoning_required?(agent, action) ->
+      not required? ->
         :ok
 
-      is_binary(reasoning) and byte_size(reasoning) > 0 ->
+      present? ->
         :ok
 
       true ->

@@ -72,7 +72,7 @@ defmodule AshHarness.Harness.GeneratedAction do
     if cap > 0 and attempts >= cap do
       handle_repair_exhausted(agent_module, intent, attempts, started_at, pid, session)
     else
-      run_pipeline(agent_module, intent, session, pid, started_at)
+      run_pipeline(agent_module, intent, session, pid, started_at, attempts)
     end
   end
 
@@ -96,17 +96,17 @@ defmodule AshHarness.Harness.GeneratedAction do
   # Pipeline
   # ----------------------------------------------------------------
 
-  defp run_pipeline(agent_module, intent, session, pid, started_at) do
-    with :ok <- scope_check(session, intent, pid, started_at),
-         :ok <- reasoning_check(session, intent, pid, started_at),
+  defp run_pipeline(agent_module, intent, session, pid, started_at, attempts) do
+    with :ok <- scope_check(session, intent, pid, started_at, attempts),
+         :ok <- reasoning_check(session, intent, pid, started_at, attempts),
          :ok <- confirmation_check(session, intent, pid, started_at),
-         :ok <- budget_check(session, intent, pid, started_at),
-         :ok <- policy_check(session, intent, pid, started_at) do
-      execute(agent_module, intent, session, pid, started_at)
+         :ok <- budget_check(session, intent, pid, started_at, attempts),
+         :ok <- policy_check(session, intent, pid, started_at, attempts) do
+      execute(agent_module, intent, session, pid, started_at, attempts)
     end
   end
 
-  defp scope_check(session, intent, pid, started_at) do
+  defp scope_check(session, intent, pid, started_at, attempts) do
     case ScopeGate.check(session, intent) do
       :ok ->
         Telemetry.set_otel_attribute("scope.passed", true)
@@ -115,12 +115,15 @@ defmodule AshHarness.Harness.GeneratedAction do
       {:error, reason} ->
         Telemetry.set_otel_attribute("scope.passed", false)
         append(pid, intent, :scope_violation, started_at)
-        emit_repair_feedback(session.agent, intent, reason)
+        # Scope refusal is non-retryable so the counter doesn't bump;
+        # report the current attempt as `attempts + 1` to keep the
+        # event's "this is the Nth try" semantics consistent.
+        emit_repair_feedback(session.agent, intent, reason, attempts + 1)
         {:error, Repair.format_feedback(reason, intent)}
     end
   end
 
-  defp reasoning_check(session, intent, pid, started_at) do
+  defp reasoning_check(session, intent, pid, started_at, attempts) do
     case ReasoningGate.check(session, intent) do
       :ok ->
         :ok
@@ -129,7 +132,7 @@ defmodule AshHarness.Harness.GeneratedAction do
         append(pid, intent, :reasoning_required, started_at)
         # Reasoning-missing is retryable; charge an attempt.
         bump_repair_if_present(pid, intent)
-        emit_repair_feedback(session.agent, intent, reason)
+        emit_repair_feedback(session.agent, intent, reason, attempts + 1)
         {:error, Repair.format_feedback(reason, intent)}
     end
   end
@@ -145,7 +148,7 @@ defmodule AshHarness.Harness.GeneratedAction do
     end
   end
 
-  defp budget_check(session, intent, pid, started_at) do
+  defp budget_check(session, intent, pid, started_at, attempts) do
     set_budget_otel_attrs(session)
 
     case BudgetGate.check(session, intent) do
@@ -154,7 +157,7 @@ defmodule AshHarness.Harness.GeneratedAction do
 
       {:error, reason} ->
         append(pid, intent, :budget_exceeded, started_at)
-        emit_repair_feedback(session.agent, intent, reason)
+        emit_repair_feedback(session.agent, intent, reason, attempts + 1)
         {:error, Repair.format_feedback(reason, intent)}
     end
   end
@@ -166,7 +169,7 @@ defmodule AshHarness.Harness.GeneratedAction do
     })
   end
 
-  defp policy_check(session, intent, pid, started_at) do
+  defp policy_check(session, intent, pid, started_at, attempts) do
     case PolicyGate.check(session, intent) do
       :ok ->
         Telemetry.set_otel_attribute("policy.passed", true)
@@ -175,15 +178,15 @@ defmodule AshHarness.Harness.GeneratedAction do
       {:error, reason} ->
         Telemetry.set_otel_attribute("policy.passed", false)
         append(pid, intent, :policy_denied, started_at)
-        emit_repair_feedback(session.agent, intent, reason)
+        emit_repair_feedback(session.agent, intent, reason, attempts + 1)
         {:error, Repair.format_feedback(reason, intent)}
     end
   end
 
-  defp execute(agent_module, intent, session, pid, started_at) do
+  defp execute(agent_module, intent, session, pid, started_at, attempts) do
     case ActionExecutor.run(session.actor, intent) do
       {:ok, result} ->
-        emit_executed(agent_module, intent, :ok, started_at)
+        emit_executed(agent_module, intent, :ok, started_at, result)
 
         if BudgetGate.mutating?(intent) do
           bump_mutation_if_present(pid)
@@ -194,8 +197,11 @@ defmodule AshHarness.Harness.GeneratedAction do
 
       {:error, reason} ->
         status = result_status_for_error(reason)
-        emit_executed(agent_module, intent, :error, started_at)
-        emit_repair_feedback(agent_module, intent, reason)
+        emit_executed(agent_module, intent, :error, started_at, reason)
+        # Report this failure as the (attempts + 1)-th attempt — the
+        # counter bump (for retryable failures) happens below, so the
+        # event reflects the attempt being made right now.
+        emit_repair_feedback(agent_module, intent, reason, attempts + 1)
 
         if Repair.retryable?(reason) do
           bump_repair_if_present(pid, intent)
@@ -209,7 +215,7 @@ defmodule AshHarness.Harness.GeneratedAction do
   defp handle_repair_exhausted(agent_module, intent, attempts, started_at, pid, _session) do
     Telemetry.emit(
       [:ash_harness, :repair, :exhausted],
-      %{attempts: attempts},
+      %{total_attempts: attempts},
       %{
         agent: agent_module,
         resource: intent.resource,
@@ -304,26 +310,64 @@ defmodule AshHarness.Harness.GeneratedAction do
   defp result_status_for_error(%Ash.Error.Forbidden{}), do: :policy_denied
   defp result_status_for_error(_), do: :error
 
-  defp emit_executed(agent_module, intent, status, started_at) do
+  defp emit_executed(agent_module, intent, status, started_at, result_or_error) do
     duration = System.monotonic_time(:millisecond) - started_at
+
+    {records_returned, records_changed} =
+      record_counts(status, intent, result_or_error)
 
     Telemetry.emit(
       [:ash_harness, :action, :executed],
-      %{duration_ms: duration},
+      %{
+        duration_ms: duration,
+        records_returned: records_returned,
+        records_changed: records_changed
+      },
       %{
         agent: agent_module,
         resource: intent.resource,
         action: intent.action,
         status: status,
+        error_class: error_class_for(status, result_or_error),
         request_id: intent.request_id
       }
     )
   end
 
-  defp emit_repair_feedback(agent_module, intent, reason) do
+  # On success: `:read` reports the count of returned records, mutations
+  # report 1 record changed. On failure: both fields are nil (no work
+  # landed).
+  defp record_counts(:ok, %Intent{} = intent, result) do
+    cond do
+      reading?(intent) -> {read_count(result), nil}
+      BudgetGate.mutating?(intent) -> {nil, 1}
+      true -> {nil, nil}
+    end
+  end
+
+  defp record_counts(:error, _intent, _err), do: {nil, nil}
+
+  defp reading?(%Intent{resource: resource, action: action}) do
+    case Ash.Resource.Info.action(resource, action) do
+      %{type: :read} -> true
+      _ -> false
+    end
+  end
+
+  defp read_count(records) when is_list(records), do: length(records)
+  defp read_count(_), do: nil
+
+  # The Splode-style class for the error that ended the dispatch. `nil`
+  # on success — listeners pattern-match on `error_class: nil` to detect
+  # the happy path.
+  defp error_class_for(:ok, _), do: nil
+  defp error_class_for(:error, reason), do: AshHarness.Errors.classify(reason)
+
+  defp emit_repair_feedback(agent_module, intent, reason, attempt)
+       when is_integer(attempt) and attempt > 0 do
     Telemetry.emit(
       [:ash_harness, :repair, :feedback],
-      %{attempt: 1},
+      %{attempt: attempt},
       %{
         agent: agent_module,
         resource: intent.resource,

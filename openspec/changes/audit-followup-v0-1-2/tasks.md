@@ -21,19 +21,19 @@
 
 ## 4. Fix repair:feedback attempt count
 
-- [ ] 4.1 Write a failing test in `test/ash_harness/harness/repair_test.exs` (or new file) asserting that when an action fails validation for the third time in a turn, `[:ash_harness, :repair, :feedback]` fires with `attempt: 3` (not `1`) — run, see failure
-- [ ] 4.2 At `lib/ash_harness/harness/generated_action.ex:314`, replace the hardcoded `%{attempt: 1}` with `%{attempt: attempts}` (the variable already in scope at line 61) — propagate the local into the emit call site
-- [ ] 4.3 Rename `repair:exhausted`'s measurement key from `attempts` to `total_attempts` at line 203; update the matching test
-- [ ] 4.4 Run repair tests + telemetry tests, see green
+- [x] 4.1 Write a failing test in `test/ash_harness/harness/repair_test.exs` (or new file) asserting that when an action fails validation for the third time in a turn, `[:ash_harness, :repair, :feedback]` fires with `attempt: 3` (not `1`) — run, see failure
+- [x] 4.2 At `lib/ash_harness/harness/generated_action.ex:314`, replace the hardcoded `%{attempt: 1}` with `%{attempt: attempts}` (the variable already in scope at line 61) — propagate the local into the emit call site
+- [x] 4.3 Rename `repair:exhausted`'s measurement key from `attempts` to `total_attempts` at line 203; update the matching test
+- [x] 4.4 Run repair tests + telemetry tests, see green
 
 ## 5. Gate :checked pass-events
 
-- [ ] 5.1 Write a failing test asserting that on a clean successful dispatch all four `:checked` events fire once each with the same `:request_id`, and that on a policy-refused dispatch `:scope, :checked`, `:reasoning, :checked`, `:budget, :checked`, AND `:policy, :checked` (with `passed: false`) all fire alongside the existing `:policy, :denied` event — run, see failures
-- [ ] 5.2 Emit `[:ash_harness, :scope, :checked]` at the end of `scope_gate.ex check/3` regardless of pass/fail; metadata: `%{agent, resource, action, passed, request_id}`
-- [ ] 5.3 Emit `[:ash_harness, :reasoning, :checked]` at the end of `reasoning_gate.ex check/3`; measurements `%{required, present}`; metadata as above
-- [ ] 5.4 Emit `[:ash_harness, :budget, :checked]` at the end of `budget_gate.ex check/3`; measurements `%{count, max}`; metadata as above
-- [ ] 5.5 Emit `[:ash_harness, :policy, :checked]` at the end of `policy_gate.ex check/3`; metadata with `passed: boolean`
-- [ ] 5.6 Run pass-events test, see green
+- [x] 5.1 Write a failing test asserting that on a clean successful dispatch all four `:checked` events fire once each with the same `:request_id`, and that on a policy-refused dispatch `:scope, :checked`, `:reasoning, :checked`, `:budget, :checked`, AND `:policy, :checked` (with `passed: false`) all fire alongside the existing `:policy, :denied` event — run, see failures
+- [x] 5.2 Emit `[:ash_harness, :scope, :checked]` at the end of `scope_gate.ex check/3` regardless of pass/fail; metadata: `%{agent, resource, action, passed, request_id}`
+- [x] 5.3 Emit `[:ash_harness, :reasoning, :checked]` at the end of `reasoning_gate.ex check/3`; measurements `%{required, present}`; metadata as above
+- [x] 5.4 Emit `[:ash_harness, :budget, :checked]` at the end of `budget_gate.ex check/3`; measurements `%{count, max}`; metadata as above
+- [x] 5.5 Emit `[:ash_harness, :policy, :checked]` at the end of `policy_gate.ex check/3`; metadata with `passed: boolean`
+- [x] 5.6 Run pass-events test, see green
 
 ## 6. Gate returns: convert to struct errors
 
@@ -49,13 +49,13 @@
 
 ## 7. Telemetry metadata drift fixes (existing events)
 
-- [ ] 7.1 Write `test/ash_harness/telemetry_metadata_test.exs` asserting each of the ten events' metadata shape per the spec (confirmation:approved has `respondent`, `duration_ms`; confirmation:rejected has `respondent`; policy:denied has `ash_error_class`; action:executed has `records_returned` for reads / `records_changed` for mutations / `error_class`; delegation:started+ended have `depth`, `target_trajectory_id`, `request_id`; eval:scenario:stop has `agent`, `gates_passed`, `gates_failed`; eval:gate:checked has `scenario`, `passed`; eval:report:computed has `scenario`, `kind`, `observations`) — run, see failures
-- [ ] 7.2 Update `confirmation_gate.ex` and `harness.ex` `resume/2` paths to thread `respondent` (sourced from `ApprovalResponse{respondent: _}`; default `:unspecified`) and `duration_ms` (computed from `ApprovalRequest{requested_at: _}`) into the `:approved` / `:rejected` events; add a `respondent` field to `ApprovalResponse` if absent and wire `:auto_confirm` to set `:auto_confirm`
-- [ ] 7.3 Update `policy_gate.ex` to compute `ash_error_class` from the Ash error and include it in `:denied` metadata
-- [ ] 7.4 Update `generated_action.ex` `action:executed` emission to include `records_returned` (for `:read`, the count of records returned), `records_changed` (for mutations, `1` on success), and `error_class` (from struct error class, `nil` on success)
-- [ ] 7.5 Update `lib/ash_harness/delegation.ex` (or the new initiate.ex) to include `depth`, `target_trajectory_id`, `request_id` in `:started` and `:ended` metadata
-- [ ] 7.6 Update `lib/ash_harness/eval/runner.ex` `:scenario, :stop` to include `agent`, `gates_passed`, `gates_failed`; `:gate, :checked` to include `scenario`, `passed`; `:report, :computed` to include `scenario`, `observations`
-- [ ] 7.7 Run telemetry_metadata_test, see green; run full telemetry suite
+- [x] 7.1 Write `test/ash_harness/telemetry_metadata_test.exs` asserting each of the ten events' metadata shape per the spec (confirmation:approved has `respondent`, `duration_ms`; confirmation:rejected has `respondent`; policy:denied has `ash_error_class`; action:executed has `records_returned` for reads / `records_changed` for mutations / `error_class`; delegation:started+ended have `depth`, `target_trajectory_id`, `request_id`; eval:scenario:stop has `agent`, `gates_passed`, `gates_failed`; eval:gate:checked has `scenario`, `passed`; eval:report:computed has `scenario`, `kind`, `observations`) — run, see failures
+- [x] 7.2 Update `confirmation_gate.ex` and `harness.ex` `resume/2` paths to thread `respondent` (sourced from `ApprovalResponse{respondent: _}`; default `:unspecified`) and `duration_ms` (computed from `ApprovalRequest{requested_at: _}`) into the `:approved` / `:rejected` events; add a `respondent` field to `ApprovalResponse` if absent and wire `:auto_confirm` to set `:auto_confirm`
+- [x] 7.3 Update `policy_gate.ex` to compute `ash_error_class` from the Ash error and include it in `:denied` metadata
+- [x] 7.4 Update `generated_action.ex` `action:executed` emission to include `records_returned` (for `:read`, the count of records returned), `records_changed` (for mutations, `1` on success), and `error_class` (from struct error class, `nil` on success)
+- [x] 7.5 Update `lib/ash_harness/delegation.ex` (or the new initiate.ex) to include `depth`, `target_trajectory_id`, `request_id` in `:started` and `:ended` metadata
+- [x] 7.6 Update `lib/ash_harness/eval/runner.ex` `:scenario, :stop` to include `agent`, `gates_passed`, `gates_failed`; `:gate, :checked` to include `scenario`, `passed`; `:report, :computed` to include `scenario`, `observations`
+- [x] 7.7 Run telemetry_metadata_test, see green; run full telemetry suite
 
 ## 8. TrajectoryEntry.data field
 

@@ -24,58 +24,76 @@ defmodule AshHarness.Harness.ConfirmationGate do
       not AgentInfo.confirms_action?(agent, intent.action) ->
         :ok
 
-      approval_recorded?(session, intent) ->
-        Telemetry.emit(
-          [:ash_harness, :confirmation, :approved],
-          %{},
-          %{
-            agent: agent,
-            resource: intent.resource,
-            action: intent.action,
-            request_id: intent.request_id
-          }
-        )
-
-        :ok
-
       true ->
-        {:ok, request} =
-          ApprovalRequest.new(
-            prompt:
-              "Agent #{inspect(agent)} requests approval to invoke " <>
-                "#{inspect(intent.resource)}.#{intent.action}.",
-            allowed_responses: [:approved, :rejected],
-            metadata: %{
-              agent: inspect(agent),
-              resource: inspect(intent.resource),
-              action: intent.action,
-              input: intent.input,
-              reasoning: intent.reasoning
-            }
-          )
+        case approval_entry(session, intent) do
+          nil ->
+            emit_requested(agent, intent)
 
-        Telemetry.emit(
-          [:ash_harness, :confirmation, :requested],
-          %{},
-          %{
-            agent: agent,
-            resource: intent.resource,
-            action: intent.action,
-            request_id: intent.request_id
-          }
-        )
+            {:ok, request} =
+              ApprovalRequest.new(
+                prompt:
+                  "Agent #{inspect(agent)} requests approval to invoke " <>
+                    "#{inspect(intent.resource)}.#{intent.action}.",
+                allowed_responses: [:approved, :rejected],
+                metadata: %{
+                  agent: inspect(agent),
+                  resource: inspect(intent.resource),
+                  action: intent.action,
+                  input: intent.input,
+                  reasoning: intent.reasoning
+                }
+              )
 
-        {:halt, request}
+            {:halt, request}
+
+          entry ->
+            # v0.1.2: surface `respondent` + `duration_ms` from the
+            # stored approval entry. Falls back gracefully when the
+            # legacy bare-atom shape (`:approved`) is encountered.
+            Telemetry.emit(
+              [:ash_harness, :confirmation, :approved],
+              %{duration_ms: duration_ms(entry)},
+              %{
+                agent: agent,
+                resource: intent.resource,
+                action: intent.action,
+                respondent: respondent(entry),
+                request_id: intent.request_id
+              }
+            )
+
+            :ok
+        end
     end
   end
 
-  defp approval_recorded?(%Session{metadata: meta}, %Intent{} = intent) do
-    case Map.get(meta, :approvals, %{}) do
-      %{} = approvals ->
-        Map.has_key?(approvals, {intent.resource, intent.action})
+  defp emit_requested(agent, %Intent{} = intent) do
+    Telemetry.emit(
+      [:ash_harness, :confirmation, :requested],
+      %{},
+      %{
+        agent: agent,
+        resource: intent.resource,
+        action: intent.action,
+        request_id: intent.request_id
+      }
+    )
+  end
 
-      _ ->
-        false
+  # Returns the recorded approval entry for the action under request,
+  # or `nil` when no approval is on file. Entry is either a bare atom
+  # decision (legacy `:approved`/`:rejected`) or a map with
+  # `:decision`, `:respondent`, `:duration_ms`.
+  defp approval_entry(%Session{metadata: meta}, %Intent{} = intent) do
+    case Map.get(meta || %{}, :approvals, %{}) do
+      %{} = approvals -> Map.get(approvals, {intent.resource, intent.action})
+      _ -> nil
     end
   end
+
+  defp respondent(%{respondent: r}), do: r
+  defp respondent(_), do: :unspecified
+
+  defp duration_ms(%{duration_ms: d}) when is_integer(d), do: d
+  defp duration_ms(_), do: 0
 end

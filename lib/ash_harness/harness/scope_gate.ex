@@ -18,7 +18,23 @@ defmodule AshHarness.Harness.ScopeGate do
         %Session{agent: agent},
         %Intent{resource: resource, action: action} = intent
       ) do
-    if AgentInfo.in_scope?(agent, resource, action) do
+    passed? = AgentInfo.in_scope?(agent, resource, action)
+
+    # v0.1.2: always emit a `:checked` event so listeners can compute
+    # pass-rate metrics regardless of OTel span sampling.
+    Telemetry.emit(
+      [:ash_harness, :scope, :checked],
+      %{},
+      %{
+        agent: agent,
+        resource: resource,
+        action: action,
+        passed: passed?,
+        request_id: intent.request_id
+      }
+    )
+
+    if passed? do
       :ok
     else
       Telemetry.emit(

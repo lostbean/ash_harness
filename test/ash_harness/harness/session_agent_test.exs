@@ -75,7 +75,11 @@ defmodule AshHarness.Harness.SessionAgentTest do
       assert :ok = SessionAgent.record_approval(pid, response)
       state = SessionAgent.get_state(pid)
       key = {AshHarness.Test.Ticket, :assign}
-      assert %{approvals: %{^key => :approved}} = state.metadata
+
+      # v0.1.2: approvals store a richer record (decision + respondent +
+      # duration_ms) rather than a bare decision atom.
+      assert %{approvals: %{^key => %{decision: :approved, respondent: %{id: "human"}}}} =
+               state.metadata
     end
   end
 

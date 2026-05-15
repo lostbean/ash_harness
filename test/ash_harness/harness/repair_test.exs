@@ -159,10 +159,11 @@ defmodule AshHarness.Harness.RepairTest do
       {:ok, pid: pid, session: session, ctx: ctx}
     end
 
-    test "exhausted attempts emit telemetry and return retry-limit feedback", %{
-      pid: pid,
-      ctx: ctx
-    } do
+    test "exhausted attempts emit telemetry with :total_attempts measurement and return retry-limit feedback",
+         %{
+           pid: pid,
+           ctx: ctx
+         } do
       cap = AshHarness.Agent.Info.max_repair_loop_retries(AshHarness.Test.TriageAgent)
       key = {AshHarness.Test.Ticket, :open_ticket}
       for _ <- 1..cap, do: SessionAgent.bump_repair_attempt(pid, key)
@@ -189,7 +190,60 @@ defmodule AshHarness.Harness.RepairTest do
                )
 
       assert msg =~ "Retry limit reached"
-      assert_receive {:exhausted, _, %{action: :open_ticket, resource: AshHarness.Test.Ticket}}
+
+      assert_receive {:exhausted, measurements,
+                      %{action: :open_ticket, resource: AshHarness.Test.Ticket}}
+
+      assert measurements[:total_attempts] == cap,
+             "expected :total_attempts measurement = #{cap}, got: #{inspect(measurements)}"
+
+      :telemetry.detach(handler_id)
+    end
+
+    test "repair:feedback fires with the real per-(resource, action) attempt count", %{
+      pid: pid,
+      ctx: ctx
+    } do
+      # ValidationFailed is the retryable class, so successive failures bump
+      # the per-action counter. The emit should reflect the **current attempt
+      # being made**, not the hardcoded 1.
+      handler_id = "repair-feedback-attempt-#{System.unique_integer()}"
+      parent = self()
+
+      :telemetry.attach(
+        handler_id,
+        [:ash_harness, :repair, :feedback],
+        fn _evt, measurements, metadata, _ ->
+          send(parent, {:feedback, measurements, metadata})
+        end,
+        nil
+      )
+
+      # Drive three failing dispatches. :open_ticket with no :title fails Ash
+      # validation, which classifies as ValidationFailed (retryable), so each
+      # failure bumps the per-action counter.
+      for _ <- 1..3 do
+        GeneratedAction.dispatch(
+          AshHarness.Test.TriageAgent,
+          AshHarness.Test.Ticket,
+          :open_ticket,
+          %{},
+          ctx
+        )
+      end
+
+      # Collect the three feedback emissions in order.
+      attempts =
+        for _ <- 1..3 do
+          assert_receive {:feedback, %{attempt: a}, _meta}, 200
+          a
+        end
+
+      assert attempts == [1, 2, 3],
+             "expected :attempt to grow with the real per-action counter, got: #{inspect(attempts)}"
+
+      # And the SessionAgent agrees: 3 retryable failures = 3 bumps.
+      assert 3 = SessionAgent.repair_attempts(pid, {AshHarness.Test.Ticket, :open_ticket})
 
       :telemetry.detach(handler_id)
     end

@@ -117,13 +117,11 @@ defmodule AshHarness.Eval.Runner do
       judge_req_options: judge_req_options
     }
 
-    gate_results = Enum.map(scenario.gates, fn g -> evaluate_gate(g, ctx) end)
-    report_results = Enum.map(scenario.reports, fn r -> evaluate_report(r, ctx) end)
+    gate_results = Enum.map(scenario.gates, fn g -> evaluate_gate(g, ctx, scenario) end)
+    report_results = Enum.map(scenario.reports, fn r -> evaluate_report(r, ctx, scenario) end)
 
-    passed =
-      Enum.all?(gate_results, fn %{checks: checks} ->
-        Enum.all?(checks, fn {_label, ok?, _} -> ok? end)
-      end)
+    {gates_passed, gates_failed} = tally_gates(gate_results)
+    passed = gates_failed == 0
 
     duration = System.monotonic_time(:millisecond) - started_at
 
@@ -133,7 +131,13 @@ defmodule AshHarness.Eval.Runner do
     Telemetry.emit(
       [:ash_harness, :eval, :scenario, :stop],
       %{duration_ms: duration},
-      %{scenario: scenario.name, passed: passed}
+      %{
+        scenario: scenario.name,
+        agent: scenario.agent,
+        passed: passed,
+        gates_passed: gates_passed,
+        gates_failed: gates_failed
+      }
     )
 
     %Result{
@@ -270,6 +274,11 @@ defmodule AshHarness.Eval.Runner do
           request_id: request_id(request),
           decision: decision,
           data: request_payload_data(request, updated.agent),
+          # v0.1.2: confirmations resolved by the eval runner's
+          # auto-confirm modes set `respondent: :auto_confirm` so
+          # telemetry listeners can distinguish "human approved" from
+          # "test rig approved".
+          respondent: :auto_confirm,
           responded_at: DateTime.utc_now()
         }
 
@@ -427,27 +436,55 @@ defmodule AshHarness.Eval.Runner do
 
   defp cassette_module_default(_), do: AshHarness.Eval
 
-  defp evaluate_gate(%Gate{kind: kind, check: fun}, ctx) do
+  defp evaluate_gate(%Gate{kind: kind, check: fun}, ctx, scenario) do
     checks = fun.(ctx)
+    passed? = Enum.all?(checks, fn {_label, ok?, _} -> ok? end)
 
     Telemetry.emit(
       [:ash_harness, :eval, :gate, :checked],
       %{},
-      %{kind: kind, checks: length(checks)}
+      %{
+        scenario: scenario_name(scenario),
+        kind: kind,
+        passed: passed?,
+        checks: length(checks)
+      }
     )
 
     %{kind: kind, checks: checks}
   end
 
-  defp evaluate_report(%Report{kind: kind, compute: fun}, ctx) do
+  defp evaluate_report(%Report{kind: kind, compute: fun}, ctx, scenario) do
     computed = fun.(ctx)
 
     Telemetry.emit(
       [:ash_harness, :eval, :report, :computed],
       %{},
-      %{kind: kind}
+      %{
+        scenario: scenario_name(scenario),
+        kind: kind,
+        observations: Map.get(computed, :observations, %{})
+      }
     )
 
     Map.put(computed, :kind, kind)
   end
+
+  # Count gates that passed vs. failed. A gate "passes" iff every one
+  # of its `{label, passed?, _}` checks passed; one failing check fails
+  # the whole gate. Used both for `result.passed` and for the
+  # `:scenario, :stop` event's `:gates_passed` / `:gates_failed`
+  # measurements.
+  defp tally_gates(gate_results) do
+    Enum.reduce(gate_results, {0, 0}, fn %{checks: checks}, {pass, fail} ->
+      if Enum.all?(checks, fn {_label, ok?, _} -> ok? end) do
+        {pass + 1, fail}
+      else
+        {pass, fail + 1}
+      end
+    end)
+  end
+
+  defp scenario_name(%Scenario{name: name}), do: name
+  defp scenario_name(_), do: nil
 end

@@ -22,8 +22,14 @@ defmodule AshHarness.Harness.PolicyGate do
   @spec check(Session.t(), Intent.t()) :: :ok | {:error, PolicyDenied.t()}
   def check(%Session{actor: actor} = session, %Intent{} = intent) do
     if BudgetGate.mutating?(intent) do
-      case can?(actor, intent) do
+      result = can?(actor, intent)
+
+      case result do
         false ->
+          emit_checked(session.agent, intent, false)
+
+          ash_error = %Ash.Error.Forbidden{}
+
           Telemetry.emit(
             [:ash_harness, :policy, :denied],
             %{},
@@ -31,6 +37,7 @@ defmodule AshHarness.Harness.PolicyGate do
               agent: session.agent,
               resource: intent.resource,
               action: intent.action,
+              ash_error_class: ash_error_class(ash_error),
               request_id: intent.request_id
             }
           )
@@ -41,16 +48,44 @@ defmodule AshHarness.Harness.PolicyGate do
              resource: intent.resource,
              action: intent.action,
              actor: actor,
-             ash_error: %Ash.Error.Forbidden{}
+             ash_error: ash_error
            }}
 
         _ ->
+          emit_checked(session.agent, intent, true)
           :ok
       end
     else
+      # Read actions short-circuit; the executor still runs Ash policies
+      # on the read, but the gate trivially passes. Emit anyway so the
+      # listener count matches the dispatch count.
+      emit_checked(session.agent, intent, true)
       :ok
     end
   end
+
+  # v0.1.2 `:checked` pass-event. Fires on every evaluation regardless
+  # of whether the action was a read/mutation or whether the gate passed.
+  defp emit_checked(agent, %Intent{} = intent, passed?) do
+    Telemetry.emit(
+      [:ash_harness, :policy, :checked],
+      %{},
+      %{
+        agent: agent,
+        resource: intent.resource,
+        action: intent.action,
+        passed: passed?,
+        request_id: intent.request_id
+      }
+    )
+  end
+
+  # The Splode error class for the denial. For `:maybe` we fall back to
+  # `:forbidden` because the gate refuses on `false` only; this helper
+  # documents the explicit denial path.
+  defp ash_error_class(%Ash.Error.Forbidden{class: class}) when not is_nil(class), do: class
+  defp ash_error_class(%Ash.Error.Forbidden{}), do: :forbidden
+  defp ash_error_class(_), do: :unknown
 
   defp can?(actor, %Intent{resource: resource, action: action_name, input: input}) do
     Ash.can?({resource, action_name, input || %{}}, actor)

@@ -42,13 +42,31 @@ defmodule AshHarness.Delegation do
     max = max_depth(opts)
     depth = current_depth(caller)
 
+    # v0.1.2 telemetry contract: each delegation carries a fresh
+    # `target_trajectory_id` so observability tools can fetch the
+    # delegate's full trace. Generated here at the entry point and
+    # threaded into :started/:ended/:denied events. Group C will move
+    # this into `Delegation.Initiate.run/4` as part of the subdir
+    # refactor; relocating is mechanical because the contract is set
+    # here.
+    target_trajectory_id = Uniq.UUID.uuid4()
+
+    # `request_id` should match the parent dispatch's id when delegation
+    # is invoked from a generated tool. Group C wires the
+    # `AshHarness.Delegation.Skill` end-to-end and will pass the
+    # parent's `request_id` through this opt. For now, hosts calling
+    # `Delegation.initiate/4` directly can supply `:request_id`; we
+    # fall back to a fresh UUID so the field is never nil (matches the
+    # always-present contract of the new spec).
+    request_id = Keyword.get(opts, :request_id) || Uniq.UUID.uuid4()
+
     cond do
       not AgentInfo.delegate_for?(caller.agent, target) ->
-        emit_denied(caller, target, :not_permitted)
+        emit_denied(caller, target, :not_permitted, target_trajectory_id, request_id)
         {:error, %DelegationNotPermitted{from: caller.agent, to: target, reason: :not_permitted}}
 
       depth >= max ->
-        emit_denied(caller, target, :depth_exceeded)
+        emit_denied(caller, target, :depth_exceeded, target_trajectory_id, request_id)
 
         {:error,
          %DelegationDepthExceeded{
@@ -59,18 +77,24 @@ defmodule AshHarness.Delegation do
          }}
 
       true ->
-        do_initiate(caller, target, question, opts)
+        do_initiate(caller, target, question, opts, target_trajectory_id, request_id)
     end
   end
 
-  defp do_initiate(caller, target, question, opts) do
+  defp do_initiate(caller, target, question, opts, target_trajectory_id, request_id) do
     depth = current_depth(caller) + 1
     started_at = System.monotonic_time(:millisecond)
 
     Telemetry.emit(
       [:ash_harness, :delegation, :started],
       %{depth: depth},
-      %{from_agent: caller.agent, to_agent: target}
+      %{
+        from_agent: caller.agent,
+        to_agent: target,
+        depth: depth,
+        target_trajectory_id: target_trajectory_id,
+        request_id: request_id
+      }
     )
 
     target_opts = Keyword.put(opts, :metadata, %{_delegation_depth: depth})
@@ -93,7 +117,14 @@ defmodule AshHarness.Delegation do
         Telemetry.emit(
           [:ash_harness, :delegation, :ended],
           %{duration_ms: System.monotonic_time(:millisecond) - started_at},
-          %{from_agent: caller.agent, to_agent: target, status: :ok}
+          %{
+            from_agent: caller.agent,
+            to_agent: target,
+            status: :ok,
+            depth: depth,
+            target_trajectory_id: target_trajectory_id,
+            request_id: request_id
+          }
         )
 
         {:ok, reply_text, updated_caller, Harness.trajectory(final_delegate_session)}
@@ -105,18 +136,31 @@ defmodule AshHarness.Delegation do
         Telemetry.emit(
           [:ash_harness, :delegation, :ended],
           %{},
-          %{from_agent: caller.agent, to_agent: target, status: :error}
+          %{
+            from_agent: caller.agent,
+            to_agent: target,
+            status: :error,
+            depth: depth,
+            target_trajectory_id: target_trajectory_id,
+            request_id: request_id
+          }
         )
 
         {:error, reason}
     end
   end
 
-  defp emit_denied(caller, target, reason) do
+  defp emit_denied(caller, target, reason, target_trajectory_id, request_id) do
     Telemetry.emit(
       [:ash_harness, :delegation, :denied],
       %{},
-      %{from_agent: caller.agent, to_agent: target, reason: reason}
+      %{
+        from_agent: caller.agent,
+        to_agent: target,
+        reason: reason,
+        target_trajectory_id: target_trajectory_id,
+        request_id: request_id
+      }
     )
   end
 

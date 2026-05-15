@@ -21,8 +21,23 @@ defmodule AshHarness.Harness.BudgetGate do
   @spec check(Session.t(), Intent.t()) :: :ok | {:error, MutationLimitExceeded.t()}
   def check(%Session{agent: agent, mutation_count: count}, %Intent{} = intent) do
     max = AgentInfo.max_mutations_per_turn(agent)
+    refused? = mutating?(intent) and count >= max
 
-    if mutating?(intent) and count >= max do
+    # v0.1.2: always emit `:checked` so listeners can chart budget
+    # utilization without scraping OTel spans.
+    Telemetry.emit(
+      [:ash_harness, :budget, :checked],
+      %{count: count, max: max},
+      %{
+        agent: agent,
+        resource: intent.resource,
+        action: intent.action,
+        passed: not refused?,
+        request_id: intent.request_id
+      }
+    )
+
+    if refused? do
       Telemetry.emit(
         [:ash_harness, :budget, :exceeded],
         %{count: count, max: max},

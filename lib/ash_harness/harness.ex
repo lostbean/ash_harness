@@ -149,6 +149,13 @@ defmodule AshHarness.Harness do
           | {:halt, ApprovalRequest.t() | Suspension.t(), Session.t()}
           | {:error, term(), Session.t()}
   def resume(%Session{} = session, %ApprovalResponse{} = response) do
+    # v0.1.2 telemetry: compute approval `duration_ms` from the
+    # ApprovalRequest's `created_at` against the response's
+    # `responded_at`. Stash it on `response.data.duration_ms` so the
+    # ConfirmationGate's :approved emit and the :rejected emit can pull
+    # it without re-walking the suspension graph.
+    response = enrich_response_with_duration(session, response)
+
     session = do_record_approval(session, response)
     session = maybe_append_rejection_entry(session, response)
 
@@ -306,6 +313,26 @@ defmodule AshHarness.Harness do
     end
   end
 
+  # Stamp `:duration_ms` on response.data using the request's
+  # `created_at` minus the response's `responded_at`. Falls back to a
+  # nil duration when either timestamp is missing.
+  defp enrich_response_with_duration(%Session{} = session, %ApprovalResponse{} = response) do
+    duration_ms =
+      case pending_suspension(session) do
+        %Suspension{approval_request: %ApprovalRequest{created_at: %DateTime{} = created}} ->
+          case response.responded_at do
+            %DateTime{} = ended -> DateTime.diff(ended, created, :millisecond)
+            _ -> nil
+          end
+
+        _ ->
+          nil
+      end
+
+    data = response.data || %{}
+    %{response | data: Map.put(data, :duration_ms, duration_ms)}
+  end
+
   defp maybe_append_rejection_entry(
          %Session{} = session,
          %ApprovalResponse{decision: :rejected} = response
@@ -347,6 +374,7 @@ defmodule AshHarness.Harness do
         agent: session.agent,
         resource: resource,
         action: action,
+        respondent: response.respondent || :unspecified,
         request_id: response.request_id
       }
     )
@@ -364,8 +392,18 @@ defmodule AshHarness.Harness do
       Map.get(data, :action)
     }
 
+    # v0.1.2: store the richer approval record (decision + respondent +
+    # duration_ms) so ConfirmationGate's `:approved` emit can pull those
+    # fields without seeing the original response.
+    approval_entry = %{
+      decision: response.decision,
+      respondent: response.respondent || :unspecified,
+      duration_ms: Map.get(data, :duration_ms),
+      responded_at: response.responded_at
+    }
+
     approvals = Map.get(session.metadata, :approvals, %{})
-    new_approvals = Map.put(approvals, decision_key, response.decision)
+    new_approvals = Map.put(approvals, decision_key, approval_entry)
     new_session = %{session | metadata: Map.put(session.metadata, :approvals, new_approvals)}
 
     case session_pid(new_session) do

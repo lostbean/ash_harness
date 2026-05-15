@@ -176,9 +176,19 @@ defmodule AshHarness.Harness.SessionAgent do
       Map.get(data, :action)
     }
 
+    # v0.1.2: store the full approval record so the ConfirmationGate's
+    # `:approved` event can include `respondent` + `duration_ms` without
+    # re-plumbing the response through every dispatch.
+    entry = %{
+      decision: response.decision,
+      respondent: response.respondent || :unspecified,
+      duration_ms: Map.get(data, :duration_ms),
+      responded_at: response.responded_at
+    }
+
     new_meta =
-      Map.update(state.metadata, :approvals, %{decision_key => response.decision}, fn approvals ->
-        Map.put(approvals, decision_key, response.decision)
+      Map.update(state.metadata, :approvals, %{decision_key => entry}, fn approvals ->
+        Map.put(approvals, decision_key, entry)
       end)
 
     {:reply, :ok, %{state | metadata: new_meta}}
