@@ -156,14 +156,23 @@ defmodule AshHarness.Agent.Dsl do
   @delegate %Spark.Dsl.Entity{
     name: :delegate,
     describe: "Allow this agent to delegate questions to another agent.",
-    examples: [~s|delegate MyApp.AccountAgent, "Customer-account questions."|],
+    examples: [
+      ~s|delegate MyApp.AccountAgent, as: "accounts", for: "Customer-account questions."|
+    ],
     target: AshHarness.Agent.Delegation.DelegateEntry,
-    args: [:agent_module, :for],
+    args: [:agent_module],
     schema: [
       agent_module: [
         type: :module,
         required: true,
         doc: "Target agent module (must use `AshHarness.Agent`)."
+      ],
+      as: [
+        type: :string,
+        required: true,
+        doc:
+          "Short, case-insensitive alias the LLM uses to refer to this delegate " <>
+            "(e.g. `\"billing\"`)."
       ],
       for: [
         type: :string,
@@ -250,6 +259,7 @@ defmodule AshHarness.Agent.Dsl do
       AshHarness.Agent.Verifiers.ConfirmAutoMutuallyExclusive,
       AshHarness.Agent.Verifiers.ReasoningActionsInScope,
       AshHarness.Agent.Verifiers.DelegatesUseAshHarnessAgent,
+      AshHarness.Agent.Verifiers.DelegateAliasesUnique,
       AshHarness.Agent.Verifiers.DomainTermsNoConflict,
       AshHarness.Agent.Verifiers.ToolNamesUnique
     ]

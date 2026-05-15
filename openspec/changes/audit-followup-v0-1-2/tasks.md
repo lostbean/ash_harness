@@ -59,33 +59,33 @@
 
 ## 8. TrajectoryEntry.data field
 
-- [ ] 8.1 Write a failing test in `test/ash_harness/harness/trajectory_entry_test.exs` asserting that `%TrajectoryEntry{}` has a `data` field defaulting to `%{}`, and that a delegation entry populates `data.reply_text` and `data.target_trajectory_id` — run, see failure
-- [ ] 8.2 Add `data: %{}` to `lib/ash_harness/harness/trajectory_entry.ex` struct
-- [ ] 8.3 Run trajectory_entry_test (the struct shape test), see green for the struct piece (the delegation piece stays red until step 9)
+- [x] 8.1 Write a failing test in `test/ash_harness/harness/trajectory_entry_test.exs` asserting that `%TrajectoryEntry{}` has a `data` field defaulting to `%{}`, and that a delegation entry populates `data.reply_text` and `data.target_trajectory_id` — run, see failure
+- [x] 8.2 Add `data: %{}` to `lib/ash_harness/harness/trajectory_entry.ex` struct
+- [x] 8.3 Run trajectory_entry_test (the struct shape test), see green for the struct piece (the delegation piece stays red until step 9)
 
 ## 8b. Delegate `as:` alias DSL (TDD-first; prereq for the skill)
 
-- [ ] 8b.1 Write `test/ash_harness/agent_test.exs` additions asserting: (a) `delegate MyApp.Foo, as: "foo", for: "..."` parses and `Agent.Info.delegates/1` exposes `:as` as a binary; (b) a `delegate` without `as:` raises a compile-time verifier error; (c) two delegates with the same alias (case-insensitive) raise a compile-time verifier error — run, see failures
-- [ ] 8b.2 Add `as: [type: :string, required: true]` schema entry to the `delegate` entity in `lib/ash_harness/agent/dsl.ex`. Reorder `args:` to `[:agent_module]` and require `as:` and `for:` via the options
-- [ ] 8b.3 Add `as: nil` to `%DelegateEntry{}` in `lib/ash_harness/agent/delegation/delegate_entry.ex` and update its typespec
-- [ ] 8b.4 Add verifier `lib/ash_harness/agent/verifiers/delegate_aliases_unique.ex` rejecting duplicate aliases (case-insensitive)
-- [ ] 8b.5 Wire the new verifier in `dsl.ex` `verifiers:` list
-- [ ] 8b.6 Update fixture agents under `test/support/` that declare delegates to add `as:` aliases (search `delegates_to do` blocks)
-- [ ] 8b.7 Run full test suite; see green
-- [ ] 8b.8 NOTE: this is technically a breaking DSL change for v0.1.2 — call out in CHANGELOG entry (task 10.3)
+- [x] 8b.1 Write `test/ash_harness/agent_test.exs` additions asserting: (a) `delegate MyApp.Foo, as: "foo", for: "..."` parses and `Agent.Info.delegates/1` exposes `:as` as a binary; (b) a `delegate` without `as:` raises a compile-time verifier error; (c) two delegates with the same alias (case-insensitive) raise a compile-time verifier error — run, see failures
+- [x] 8b.2 Add `as: [type: :string, required: true]` schema entry to the `delegate` entity in `lib/ash_harness/agent/dsl.ex`. Reorder `args:` to `[:agent_module]` and require `as:` and `for:` via the options
+- [x] 8b.3 Add `as: nil` to `%DelegateEntry{}` in `lib/ash_harness/agent/delegation/delegate_entry.ex` and update its typespec
+- [x] 8b.4 Add verifier `lib/ash_harness/agent/verifiers/delegate_aliases_unique.ex` rejecting duplicate aliases (case-insensitive)
+- [x] 8b.5 Wire the new verifier in `dsl.ex` `verifiers:` list
+- [x] 8b.6 Update fixture agents under `test/support/` that declare delegates to add `as:` aliases (search `delegates_to do` blocks)
+- [x] 8b.7 Run full test suite; see green
+- [x] 8b.8 NOTE: this is technically a breaking DSL change for v0.1.2 — call out in CHANGELOG entry (task 10.3)
 
 ## 9. Delegation refactor + skill (TDD-first integration test)
 
-- [ ] 9.1 Write `test/ash_harness/delegation/skill_test.exs` asserting: (a) the orchestrator for an agent with non-empty `delegates_to` contains the `AshHarness.Delegation.Skill` node and it is NOT gated by `requires_approval`; (b) the orchestrator for an agent with no `delegates_to` does NOT contain that node; (c) invoking the skill with a target alias (e.g. `"billing"`) dispatches through `AshHarness.Delegation.initiate/4` and returns the delegate's reply string; (d) invoking with an unknown alias returns an error tool result listing the agent's declared aliases; (e) the caller's trajectory after a successful delegation has one entry with `data.reply_text` and `data.target_trajectory_id`; (f) if the child halts requesting confirmation, the skill returns `{:error, "delegate halted: requires confirmation"}` (nested-HITL deferral, design.md open question) — run, see failures
-- [ ] 9.2 Refactor: move the current `Delegation.initiate/4` body into `lib/ash_harness/delegation/initiate.ex` as `AshHarness.Delegation.Initiate.run/4`; keep `lib/ash_harness/delegation.ex` as a thin re-export delegating to it
-- [ ] 9.3 Add `lib/ash_harness/delegation/result.ex` with a small `%Result{reply_text, target_trajectory_id, target_trajectory, status}` struct used internally
-- [ ] 9.4 Generate `target_trajectory_id` in `Initiate.run/4` at start (UUID v4)
-- [ ] 9.5 Update `Initiate.run/4` so the appended caller trajectory entry includes `data: %{reply_text: ..., target_trajectory_id: ...}`
-- [ ] 9.6 Update telemetry emission in `Initiate.run/4` so `:started` and `:ended` include `target_trajectory_id` and `request_id` (request_id is sourced from the calling dispatch's local — thread it through)
-- [ ] 9.7 Create `lib/ash_harness/delegation/skill.ex`: a `Jido.Action` taking `(target: string, question: string)`. Resolve `target` against the agent's `delegates_to` `:as` aliases (case-insensitive exact match on the alias string). On match → call `AshHarness.Delegation.initiate/4`. On no match → return `{:error, "Unknown delegate target '#{target}'. Available aliases: #{list}"}`. On child-halt (the child agent suspended with an ApprovalRequest) → return `{:error, "delegate halted: requires confirmation"}` per nested-HITL deferral.
-- [ ] 9.8 Update `lib/ash_harness/harness/orchestrator_factory.ex` `build/1` to conditionally append the `AshHarness.Delegation.Skill` node when the agent's `delegates_to` is non-empty
-- [ ] 9.9 Update `lib/ash_harness/tool_gen/orchestrator_module.ex` `tool_nodes/0` generation to include the skill node entry without `requires_approval`
-- [ ] 9.10 Run delegation tests, see green; run trajectory_entry_test green; run full delegation suite
+- [x] 9.1 Write `test/ash_harness/delegation/skill_test.exs` asserting: (a) the orchestrator for an agent with non-empty `delegates_to` contains the `AshHarness.Delegation.Skill` node and it is NOT gated by `requires_approval`; (b) the orchestrator for an agent with no `delegates_to` does NOT contain that node; (c) invoking the skill with a target alias (e.g. `"billing"`) dispatches through `AshHarness.Delegation.initiate/4` and returns the delegate's reply string; (d) invoking with an unknown alias returns an error tool result listing the agent's declared aliases; (e) the caller's trajectory after a successful delegation has one entry with `data.reply_text` and `data.target_trajectory_id`; (f) if the child halts requesting confirmation, the skill returns `{:error, "delegate halted: requires confirmation"}` (nested-HITL deferral, design.md open question) — run, see failures
+- [x] 9.2 Refactor: move the current `Delegation.initiate/4` body into `lib/ash_harness/delegation/initiate.ex` as `AshHarness.Delegation.Initiate.run/4`; keep `lib/ash_harness/delegation.ex` as a thin re-export delegating to it
+- [x] 9.3 Add `lib/ash_harness/delegation/result.ex` with a small `%Result{reply_text, target_trajectory_id, target_trajectory, status}` struct used internally
+- [x] 9.4 Generate `target_trajectory_id` in `Initiate.run/4` at start (UUID v4)
+- [x] 9.5 Update `Initiate.run/4` so the appended caller trajectory entry includes `data: %{reply_text: ..., target_trajectory_id: ...}`
+- [x] 9.6 Update telemetry emission in `Initiate.run/4` so `:started` and `:ended` include `target_trajectory_id` and `request_id` (request_id is sourced from the calling dispatch's local — thread it through)
+- [x] 9.7 Create `lib/ash_harness/delegation/skill.ex`: a `Jido.Action` taking `(target: string, question: string)`. Resolve `target` against the agent's `delegates_to` `:as` aliases (case-insensitive exact match on the alias string). On match → call `AshHarness.Delegation.initiate/4`. On no match → return `{:error, "Unknown delegate target '#{target}'. Available aliases: #{list}"}`. On child-halt (the child agent suspended with an ApprovalRequest) → return `{:error, "delegate halted: requires confirmation"}` per nested-HITL deferral.
+- [x] 9.8 Update `lib/ash_harness/harness/orchestrator_factory.ex` `build/1` to conditionally append the `AshHarness.Delegation.Skill` node when the agent's `delegates_to` is non-empty
+- [x] 9.9 Update `lib/ash_harness/tool_gen/orchestrator_module.ex` `tool_nodes/0` generation to include the skill node entry without `requires_approval`
+- [x] 9.10 Run delegation tests, see green; run trajectory_entry_test green; run full delegation suite
 
 ## 10. CLAUDE.md + README + CHANGELOG refresh
 

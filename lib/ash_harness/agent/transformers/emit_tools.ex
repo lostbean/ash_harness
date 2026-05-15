@@ -10,6 +10,7 @@ defmodule AshHarness.Agent.Transformers.EmitTools do
 
   use Spark.Dsl.Transformer
 
+  alias AshHarness.Agent.Delegation.DelegateEntry
   alias AshHarness.Agent.Scope.ResourceEntry
   alias AshHarness.Schema.Canonical
   alias AshHarness.ToolGen
@@ -56,8 +57,20 @@ defmodule AshHarness.Agent.Transformers.EmitTools do
     identity_name = Transformer.get_option(dsl_state, [:identity], :name)
     model = Transformer.get_option(dsl_state, [:identity], :model)
 
+    has_delegates? =
+      dsl_state
+      |> Transformer.get_entities([:delegates_to])
+      |> Enum.any?(&match?(%DelegateEntry{}, &1))
+
     orchestrator_block =
-      ToolGen.OrchestratorModule.quoted(agent_module, tools, confirm_before, identity_name, model)
+      ToolGen.OrchestratorModule.quoted(
+        agent_module,
+        tools,
+        confirm_before,
+        identity_name,
+        model,
+        has_delegates?
+      )
 
     block = {:__block__, [], action_blocks ++ skill_blocks ++ [orchestrator_block]}
 

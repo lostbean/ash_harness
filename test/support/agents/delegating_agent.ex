@@ -19,6 +19,6 @@ defmodule AshHarness.Test.DelegatingAgent do
   end
 
   delegates_to do
-    delegate(AshHarness.Test.TriageAgent, "Ticketing-related questions.")
+    delegate(AshHarness.Test.TriageAgent, as: "triage", for: "Ticketing-related questions.")
   end
 end

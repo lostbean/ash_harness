@@ -68,9 +68,10 @@ defmodule AshHarness.AgentTest do
 
   describe "delegates" do
     test "exposed via Info" do
-      assert [%DelegateEntry{agent_module: TriageAgent, for: _}] =
+      assert [%DelegateEntry{agent_module: TriageAgent, for: _, as: alias_name}] =
                Info.delegates(DelegatingAgent)
 
+      assert is_binary(alias_name)
       assert Info.delegate_for?(DelegatingAgent, TriageAgent)
       refute Info.delegate_for?(DelegatingAgent, ReadOnlyAgent)
     end
@@ -246,7 +247,7 @@ defmodule AshHarness.AgentTest do
             end
 
             delegates_to do
-              delegate(String, "not an agent")
+              delegate(String, as: "string", for: "not an agent")
             end
           end
         end
@@ -280,6 +281,71 @@ defmodule AshHarness.AgentTest do
 
       assert has_dsl_error?(errors, ~r/share the short name "ticket"/)
       assert has_dsl_error?(errors, ~r/Add `as: "<unique>"`/)
+    end
+
+    test "rejects delegate without an :as alias" do
+      # The `:as` option is required at entity-build time, so the
+      # absence is raised as a Spark.Error.DslError directly during
+      # `delegate(...)` macro expansion (not via a verifier callback).
+      err =
+        assert_raise Spark.Error.DslError, fn ->
+          defmodule Elixir.AshHarness.AgentTest.NoAliasDelegateAgent do
+            use AshHarness.Agent, domains: [AshHarness.Test.Domain]
+
+            identity do
+              name("x")
+              description("x")
+              actor(%{})
+            end
+
+            scope do
+              resource AshHarness.Test.Ticket do
+                actions([:read])
+              end
+            end
+
+            delegates_to do
+              delegate(AshHarness.Test.TriageAgent, for: "...")
+            end
+          end
+        end
+
+      assert Exception.message(err) =~ ~r/required :as option/i
+    end
+
+    test "rejects two delegates with the same alias (case-insensitive)" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshHarness.AgentTest.DupAliasDelegateAgent do
+            use AshHarness.Agent, domains: [AshHarness.Test.Domain]
+
+            identity do
+              name("x")
+              description("x")
+              actor(%{})
+            end
+
+            scope do
+              resource AshHarness.Test.Ticket do
+                actions([:read])
+              end
+            end
+
+            delegates_to do
+              delegate(AshHarness.Test.TriageAgent, as: "billing", for: "...")
+              delegate(AshHarness.Test.ReadOnlyAgent, as: "Billing", for: "...")
+            end
+          end
+        end
+
+      assert has_dsl_error?(errors, ~r/duplicate.*alias|alias.*"billing"/i)
+    end
+  end
+
+  describe "delegate alias parsing" do
+    test "delegate with as: sets the alias on DelegateEntry" do
+      [entry] = Info.delegates(DelegatingAgent)
+      assert entry.as == "triage"
     end
   end
 

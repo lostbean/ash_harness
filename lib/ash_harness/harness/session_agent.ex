@@ -133,7 +133,14 @@ defmodule AshHarness.Harness.SessionAgent do
   # ----------------------------------------------------------------
 
   @impl true
-  def init(%Session{} = session), do: {:ok, session}
+  def init(%Session{} = session) do
+    # Record the SessionAgent's pid on the held state so code that
+    # only has the `%Session{}` (e.g. `Delegation.Initiate.run/4`,
+    # invoked from `Delegation.Skill` after a `get_state` lookup) can
+    # reach the SessionAgent without an out-of-band pid handle.
+    session = %{session | metadata: Map.put(session.metadata, :session_pid, self())}
+    {:ok, session}
+  end
 
   @impl true
   def handle_call(:get_state, _from, %Session{} = state) do

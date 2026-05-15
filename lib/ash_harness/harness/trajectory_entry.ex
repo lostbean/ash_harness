@@ -12,7 +12,8 @@ defmodule AshHarness.Harness.TrajectoryEntry do
     :duration_ms,
     :tokens_used,
     :repair_attempts,
-    metadata: %{}
+    metadata: %{},
+    data: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -23,6 +24,7 @@ defmodule AshHarness.Harness.TrajectoryEntry do
           duration_ms: non_neg_integer() | nil,
           tokens_used: non_neg_integer() | nil,
           repair_attempts: non_neg_integer() | nil,
-          metadata: map()
+          metadata: map(),
+          data: map()
         }
 end

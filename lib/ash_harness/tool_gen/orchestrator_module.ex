@@ -25,14 +25,26 @@ defmodule AshHarness.ToolGen.OrchestratorModule do
   @doc """
   Returns the AST that defines the orchestrator module. Embedded in
   the agent's DSL state via `Transformer.eval/3`.
+
+  `has_delegates?` controls whether the per-agent
+  `AshHarness.Delegation.Skill` meta-tool is appended to `tool_nodes/0`;
+  it is set by the caller (`EmitTools`) from the count of
+  `delegates_to` entries.
   """
-  @spec quoted(module(), [Canonical.t()], [atom()], String.t() | nil, String.t() | nil) ::
+  @spec quoted(
+          module(),
+          [Canonical.t()],
+          [atom()],
+          String.t() | nil,
+          String.t() | nil,
+          boolean()
+        ) ::
           Macro.t()
-  def quoted(agent_module, canonicals, confirm_before, name, _model) do
+  def quoted(agent_module, canonicals, confirm_before, name, _model, has_delegates? \\ false) do
     orch_mod = orchestrator_module(agent_module)
     orchestrator_name = name || agent_module |> Atom.to_string() |> String.replace("Elixir.", "")
 
-    nodes_kv =
+    action_nodes =
       Enum.map(canonicals, fn %Canonical{} = c ->
         mod = ToolGen.action_module(agent_module, c)
 
@@ -41,7 +53,12 @@ defmodule AshHarness.ToolGen.OrchestratorModule do
         else
           mod
         end
-      end) ++ [AshHarness.Harness.LoadResourceSkill]
+      end)
+
+    delegation_nodes =
+      if has_delegates?, do: [AshHarness.Delegation.Skill], else: []
+
+    nodes_kv = action_nodes ++ [AshHarness.Harness.LoadResourceSkill] ++ delegation_nodes
 
     quote do
       defmodule unquote(orch_mod) do
