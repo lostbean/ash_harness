@@ -1,0 +1,631 @@
+{
+  "interactions": [
+    {
+      "recorded_at": "2026-05-15T01:32:07.536147Z",
+      "request": {
+        "body_json": {
+          "max_tokens": 64000,
+          "messages": [
+            {
+              "content": "I need flights departing from XYZ next week. Search and tell me what you find — don't make anything up.",
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-4-5-20250929",
+          "stream": false,
+          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** — An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** — A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** — A scheduled flight. (actions: read, search)\n\n# Traversal\n\n- TauBenchAirline.Customer -[:reservations]-> TauBenchAirline.Reservation\n- TauBenchAirline.Reservation -[:customer]-> TauBenchAirline.Customer\n- TauBenchAirline.Reservation -[:flight]-> TauBenchAirline.Flight\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` — load the full detail for a resource\n  when you need it.\n",
+          "tools": [
+            {
+              "description": "An airline customer. (action: read)",
+              "input_schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              },
+              "name": "customer__read"
+            },
+            {
+              "description": "A scheduled flight. (action: read)",
+              "input_schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              },
+              "name": "flight__read"
+            },
+            {
+              "description": "A scheduled flight. (action: search)",
+              "input_schema": {
+                "properties": {
+                  "destination": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  },
+                  "origin": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "name": "flight__search"
+            },
+            {
+              "description": "Load the full detail for a resource by short name.",
+              "input_schema": {
+                "properties": {
+                  "resource_name": {
+                    "description": "The short name of the resource (e.g. \"ticket\", \"customer\").",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_name"
+                ],
+                "type": "object"
+              },
+              "name": "load_resource_skill"
+            },
+            {
+              "description": "A booked itinerary tied to a customer. — Use this when the customer wants to cancel the reservation.",
+              "input_schema": {
+                "properties": {
+                  "id": {
+                    "description": "ID of the record to operate on.",
+                    "type": "string"
+                  },
+                  "reasoning": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "name": "reservation__cancel"
+            },
+            {
+              "description": "A booked itinerary tied to a customer. — Use this to move the customer to a different flight.",
+              "input_schema": {
+                "properties": {
+                  "flight_id": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "ID of the record to operate on.",
+                    "type": "string"
+                  },
+                  "reasoning": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "name": "reservation__change_flight"
+            },
+            {
+              "description": "A booked itinerary tied to a customer. (action: read)",
+              "input_schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              },
+              "name": "reservation__read"
+            }
+          ]
+        },
+        "body_type": "json",
+        "headers": {
+          "accept-encoding": [
+            "gzip"
+          ],
+          "anthropic-beta": [
+            "tools-2024-05-16"
+          ],
+          "anthropic-version": [
+            "2023-06-01"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "req/0.5.17"
+          ]
+        },
+        "method": "POST",
+        "query_string": "",
+        "uri": "https://api.anthropic.com/v1/messages"
+      },
+      "response": {
+        "body_json": {
+          "content": [
+            {
+              "text": "I'll search for flights departing from XYZ for you.",
+              "type": "text"
+            },
+            {
+              "caller": {
+                "type": "direct"
+              },
+              "id": "toolu_01UJvZauXAK4qbvPf3Zt6eud",
+              "input": {
+                "origin": "XYZ"
+              },
+              "name": "flight__search",
+              "type": "tool_use"
+            }
+          ],
+          "id": "msg_01AQEzkLC14bajknYBw27Lwh",
+          "model": "claude-sonnet-4-5-20250929",
+          "role": "assistant",
+          "stop_details": null,
+          "stop_reason": "tool_use",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "cache_creation": {
+              "ephemeral_1h_input_tokens": 0,
+              "ephemeral_5m_input_tokens": 0
+            },
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "inference_geo": "not_available",
+            "input_tokens": 1454,
+            "output_tokens": 70,
+            "service_tier": "standard"
+          }
+        },
+        "body_type": "json",
+        "headers": {
+          "anthropic-organization-id": [
+            "a8b30265-cdb3-4bc6-8798-158fb659a7f5"
+          ],
+          "anthropic-ratelimit-input-tokens-limit": [
+            "2000000"
+          ],
+          "anthropic-ratelimit-input-tokens-remaining": [
+            "1999000"
+          ],
+          "anthropic-ratelimit-input-tokens-reset": [
+            "2026-05-15T01:32:06Z"
+          ],
+          "anthropic-ratelimit-output-tokens-limit": [
+            "400000"
+          ],
+          "anthropic-ratelimit-output-tokens-remaining": [
+            "400000"
+          ],
+          "anthropic-ratelimit-output-tokens-reset": [
+            "2026-05-15T01:32:07Z"
+          ],
+          "anthropic-ratelimit-requests-limit": [
+            "20000"
+          ],
+          "anthropic-ratelimit-requests-remaining": [
+            "19999"
+          ],
+          "anthropic-ratelimit-requests-reset": [
+            "2026-05-15T01:32:06Z"
+          ],
+          "anthropic-ratelimit-tokens-limit": [
+            "2400000"
+          ],
+          "anthropic-ratelimit-tokens-remaining": [
+            "2399000"
+          ],
+          "anthropic-ratelimit-tokens-reset": [
+            "2026-05-15T01:32:06Z"
+          ],
+          "cf-cache-status": [
+            "DYNAMIC"
+          ],
+          "cf-ray": [
+            "9fbe63096c9b82eb-GIG"
+          ],
+          "connection": [
+            "keep-alive"
+          ],
+          "content-security-policy": [
+            "default-src 'none'; frame-ancestors 'none'"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "date": [
+            "Fri, 15 May 2026 01:32:07 GMT"
+          ],
+          "request-id": [
+            "req_011Cb3VUCR78koLzLjHtvq8t"
+          ],
+          "server": [
+            "cloudflare"
+          ],
+          "set-cookie": [
+            "_cfuvid=c3EFieCXAUnWHTqBaOsdnoCew8p1QEItZOjZA4uby6s-1778808725.9895625-1.0.1.1-buYs0eM8.jDsP5Mo_CeVCScOYMBLH38wxHTAhId1ECI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+          ],
+          "strict-transport-security": [
+            "max-age=31536000; includeSubDomains; preload"
+          ],
+          "traceresponse": [
+            "00-305b12b5632a0a3cc34af5bcbfd28a76-585a6e27d772870f-01"
+          ],
+          "transfer-encoding": [
+            "chunked"
+          ],
+          "vary": [
+            "Accept-Encoding"
+          ],
+          "x-envoy-upstream-service-time": [
+            "1355"
+          ],
+          "x-robots-tag": [
+            "none"
+          ]
+        },
+        "status": 200
+      },
+      "template": {
+        "config": {
+          "allow_key_templates": false,
+          "debug": false
+        },
+        "enabled": true,
+        "patterns": {
+          "anthropic_request_id": {
+            "opts": [],
+            "source": "req_[a-zA-Z0-9]+"
+          },
+          "call_id": {
+            "opts": [],
+            "source": "call_[a-zA-Z0-9]+"
+          },
+          "chatcmpl_id": {
+            "opts": [],
+            "source": "chatcmpl-[a-zA-Z0-9]+"
+          },
+          "msg_id": {
+            "opts": [],
+            "source": "msg_[a-zA-Z0-9]+"
+          },
+          "toolu_id": {
+            "opts": [],
+            "source": "toolu_[a-zA-Z0-9]+"
+          }
+        },
+        "recorded_values": {}
+      }
+    },
+    {
+      "recorded_at": "2026-05-15T01:32:10.852692Z",
+      "request": {
+        "body_json": {
+          "max_tokens": 64000,
+          "messages": [
+            {
+              "content": "I need flights departing from XYZ next week. Search and tell me what you find — don't make anything up.",
+              "role": "user"
+            },
+            {
+              "content": [
+                {
+                  "text": "I'll search for flights departing from XYZ for you.",
+                  "type": "text"
+                },
+                {
+                  "id": "toolu_01UJvZauXAK4qbvPf3Zt6eud",
+                  "input": {
+                    "origin": "XYZ"
+                  },
+                  "name": "flight__search",
+                  "type": "tool_use"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "content": [
+                {
+                  "content": "{\"count\":0,\"records\":[]}",
+                  "tool_use_id": "toolu_01UJvZauXAK4qbvPf3Zt6eud",
+                  "type": "tool_result"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "model": "claude-sonnet-4-5-20250929",
+          "stream": false,
+          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** — An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** — A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** — A scheduled flight. (actions: read, search)\n\n# Traversal\n\n- TauBenchAirline.Customer -[:reservations]-> TauBenchAirline.Reservation\n- TauBenchAirline.Reservation -[:customer]-> TauBenchAirline.Customer\n- TauBenchAirline.Reservation -[:flight]-> TauBenchAirline.Flight\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` — load the full detail for a resource\n  when you need it.\n",
+          "tools": [
+            {
+              "description": "An airline customer. (action: read)",
+              "input_schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              },
+              "name": "customer__read"
+            },
+            {
+              "description": "A scheduled flight. (action: read)",
+              "input_schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              },
+              "name": "flight__read"
+            },
+            {
+              "description": "A scheduled flight. (action: search)",
+              "input_schema": {
+                "properties": {
+                  "destination": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  },
+                  "origin": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "name": "flight__search"
+            },
+            {
+              "description": "Load the full detail for a resource by short name.",
+              "input_schema": {
+                "properties": {
+                  "resource_name": {
+                    "description": "The short name of the resource (e.g. \"ticket\", \"customer\").",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_name"
+                ],
+                "type": "object"
+              },
+              "name": "load_resource_skill"
+            },
+            {
+              "description": "A booked itinerary tied to a customer. — Use this when the customer wants to cancel the reservation.",
+              "input_schema": {
+                "properties": {
+                  "id": {
+                    "description": "ID of the record to operate on.",
+                    "type": "string"
+                  },
+                  "reasoning": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "name": "reservation__cancel"
+            },
+            {
+              "description": "A booked itinerary tied to a customer. — Use this to move the customer to a different flight.",
+              "input_schema": {
+                "properties": {
+                  "flight_id": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "ID of the record to operate on.",
+                    "type": "string"
+                  },
+                  "reasoning": {
+                    "description": "No description provided.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "name": "reservation__change_flight"
+            },
+            {
+              "description": "A booked itinerary tied to a customer. (action: read)",
+              "input_schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              },
+              "name": "reservation__read"
+            }
+          ]
+        },
+        "body_type": "json",
+        "headers": {
+          "accept-encoding": [
+            "gzip"
+          ],
+          "anthropic-beta": [
+            "tools-2024-05-16"
+          ],
+          "anthropic-version": [
+            "2023-06-01"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "user-agent": [
+            "req/0.5.17"
+          ]
+        },
+        "method": "POST",
+        "query_string": "",
+        "uri": "https://api.anthropic.com/v1/messages"
+      },
+      "response": {
+        "body_json": {
+          "content": [
+            {
+              "text": "The search returned no results. There are **no flights departing from XYZ** in the system. This could mean:\n\n- XYZ is not a valid airport code in this airline's network, or\n- This airline doesn't operate flights from that airport\n\nIf you'd like, I can search for flights from a different origin airport. Just let me know the correct departure city or airport code you're interested in.",
+              "type": "text"
+            }
+          ],
+          "id": "msg_01NEuU8DW5giYWF1oDgzNoqH",
+          "model": "claude-sonnet-4-5-20250929",
+          "role": "assistant",
+          "stop_details": null,
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "cache_creation": {
+              "ephemeral_1h_input_tokens": 0,
+              "ephemeral_5m_input_tokens": 0
+            },
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "inference_geo": "not_available",
+            "input_tokens": 1544,
+            "output_tokens": 91,
+            "service_tier": "standard"
+          }
+        },
+        "body_type": "json",
+        "headers": {
+          "anthropic-organization-id": [
+            "a8b30265-cdb3-4bc6-8798-158fb659a7f5"
+          ],
+          "anthropic-ratelimit-input-tokens-limit": [
+            "2000000"
+          ],
+          "anthropic-ratelimit-input-tokens-remaining": [
+            "1999000"
+          ],
+          "anthropic-ratelimit-input-tokens-reset": [
+            "2026-05-15T01:32:08Z"
+          ],
+          "anthropic-ratelimit-output-tokens-limit": [
+            "400000"
+          ],
+          "anthropic-ratelimit-output-tokens-remaining": [
+            "400000"
+          ],
+          "anthropic-ratelimit-output-tokens-reset": [
+            "2026-05-15T01:32:10Z"
+          ],
+          "anthropic-ratelimit-requests-limit": [
+            "20000"
+          ],
+          "anthropic-ratelimit-requests-remaining": [
+            "19999"
+          ],
+          "anthropic-ratelimit-requests-reset": [
+            "2026-05-15T01:32:07Z"
+          ],
+          "anthropic-ratelimit-tokens-limit": [
+            "2400000"
+          ],
+          "anthropic-ratelimit-tokens-remaining": [
+            "2399000"
+          ],
+          "anthropic-ratelimit-tokens-reset": [
+            "2026-05-15T01:32:08Z"
+          ],
+          "cf-cache-status": [
+            "DYNAMIC"
+          ],
+          "cf-ray": [
+            "9fbe63134ef882eb-GIG"
+          ],
+          "connection": [
+            "keep-alive"
+          ],
+          "content-security-policy": [
+            "default-src 'none'; frame-ancestors 'none'"
+          ],
+          "content-type": [
+            "application/json"
+          ],
+          "date": [
+            "Fri, 15 May 2026 01:32:10 GMT"
+          ],
+          "request-id": [
+            "req_011Cb3VUKB9o3NXmrFFo9AWv"
+          ],
+          "server": [
+            "cloudflare"
+          ],
+          "set-cookie": [
+            "_cfuvid=ZMRD..eRN4MjlG.hQrKNAUE7klkg7dW03lxl9nevjss-1778808727.5675766-1.0.1.1-nm7djt_UEB1sJ.NUOPxz8sV.8QuSM3UmuHSlgbW1qXA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+          ],
+          "strict-transport-security": [
+            "max-age=31536000; includeSubDomains; preload"
+          ],
+          "traceresponse": [
+            "00-976756812b97f17ffe3b9808b4abcea1-57c2b4f0ff450d20-01"
+          ],
+          "transfer-encoding": [
+            "chunked"
+          ],
+          "vary": [
+            "Accept-Encoding"
+          ],
+          "x-envoy-upstream-service-time": [
+            "3106"
+          ],
+          "x-robots-tag": [
+            "none"
+          ]
+        },
+        "status": 200
+      },
+      "template": {
+        "config": {
+          "allow_key_templates": false,
+          "debug": false
+        },
+        "enabled": true,
+        "patterns": {
+          "anthropic_request_id": {
+            "opts": [],
+            "source": "req_[a-zA-Z0-9]+"
+          },
+          "call_id": {
+            "opts": [],
+            "source": "call_[a-zA-Z0-9]+"
+          },
+          "chatcmpl_id": {
+            "opts": [],
+            "source": "chatcmpl-[a-zA-Z0-9]+"
+          },
+          "msg_id": {
+            "opts": [],
+            "source": "msg_[a-zA-Z0-9]+"
+          },
+          "toolu_id": {
+            "opts": [],
+            "source": "toolu_[a-zA-Z0-9]+"
+          }
+        },
+        "recorded_values": {
+          "toolu_id": [
+            "olu_01UJvZauXAK4qbvPf3Zt6eud\","
+          ]
+        }
+      }
+    }
+  ],
+  "version": "2.0"
+}

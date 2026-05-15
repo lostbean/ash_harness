@@ -3,18 +3,21 @@
 A port of the τ-bench airline-domain customer-support task to
 AshHarness + Ash resources.
 
-v0.1.1 ships **three** end-to-end scenarios driven by committed
+v0.1.2 ships **ten** end-to-end scenarios driven by committed
 cassettes:
 
-| Scenario              | What it tests                                                                  |
-| --------------------- | ------------------------------------------------------------------------------ |
-| `change_flight`       | agent moves a premium reservation to a later flight (`status == :changed`)     |
-| `cancel_economy`      | agent cancels an economy reservation (`status == :cancelled`)                  |
-| `refuse_basic_cancel` | basic-fare reservation policy denial — status stays `:booked`; refusal logged  |
-
-Seven additional scenarios remain in the module as v0.2 placeholders
-(declared with `agent(nil)`) so the test suite stays stable while
-real cassettes are still being recorded.
+| Scenario                       | What it tests                                                                            |
+| ------------------------------ | ---------------------------------------------------------------------------------------- |
+| `change_flight`                | agent moves a premium reservation to a later flight (`status == :changed`)               |
+| `cancel_economy`               | agent cancels an economy reservation (`status == :cancelled`)                            |
+| `refuse_basic_cancel`          | basic-fare reservation policy denial — status stays `:booked`; refusal logged            |
+| `read_customer`                | pure-read loyalty-tier lookup; trajectory `excludes` mutating actions                    |
+| `list_reservations`            | relation traversal from customer to reservations; no mutations expected                  |
+| `search_by_origin_dest`        | flight search filtered by origin/destination; seat counts unchanged                      |
+| `search_unknown_origin`        | error-path: search for `XYZ` returns no results; agent must not hallucinate              |
+| `cross_customer_denial`        | runner answers `:always_reject` on confirmation; mutation cannot land                    |
+| `change_flight_with_reasoning` | same goal as `change_flight` plus a diagnostic `report :qualitative` reasoning criterion |
+| `budget_aware_multi_cancel`    | agent asked to cancel multiple reservations; mutations stay within per-turn budget       |
 
 ## Methodology
 
@@ -32,14 +35,18 @@ Gate pass/fail is binary. The aggregate gate-pass-rate maps to
 
 ## Divergence from upstream τ-bench
 
-- v0.1.1 ships 3 real scenarios + 7 placeholders; upstream τ-bench
-  airline has ~50.
+- v0.1.2 ships 10 real scenarios; upstream τ-bench airline has ~50.
 - No structured "user database" is modeled; ownership uses the
   customer's UUID rather than a τ-bench-specific key. Mapping table
   to be added once the upstream schema is verified (parent change's
   open question #3).
 - The user simulator is an AshHarness agent rather than a separate
   τ-bench role-player.
+- The agent's actor is `support-bot` (role `:bot`), which bypasses
+  the per-customer ownership check on `Reservation` policies by
+  design. `cross_customer_denial` therefore tests the confirmation
+  gate (runner-level `:always_reject`) rather than the Ash
+  authorizer.
 
 ## Reproducing
 
@@ -73,24 +80,15 @@ config :ash_harness_tau_bench, :model, "anthropic:claude-sonnet-4-5"
 
 ## Results
 
-| Date       | Model                       | Gate-pass-rate | Scenarios                    |
-| ---------- | --------------------------- | -------------- | ---------------------------- |
-| 2026-05-14 | anthropic:claude-sonnet-4-5 | 100 %          | 3 real + 7 v0.2 placeholders |
+| Date       | Model                       | Gate-pass-rate | Scenarios            |
+| ---------- | --------------------------- | -------------- | -------------------- |
+| 2026-05-14 | anthropic:claude-sonnet-4-5 | 100 %          | 10 real, 0 placeholders |
 
 The headline comes from `mix tau_bench.run` running in replay mode
-against committed cassettes:
-
-- `change_flight` — agent reads the customer's reservations, searches
-  for later flights on the route, calls `reservation__change_flight`;
-  `gate :resource_state` confirms `:status == :changed`.
-- `cancel_economy` — agent reads the reservation, calls
-  `reservation__cancel`; gate confirms `:status == :cancelled`.
-- `refuse_basic_cancel` — agent reads the reservation, recognizes the
-  basic-fare policy, and refuses without calling any mutation; gate
-  confirms `:status` remains `:booked`.
-- 7 v0.2 placeholders pass trivially (`agent(nil)` + `gate :invariant
-  do true end`) — they exist so the test count stays stable while
-  the remaining ~47 upstream τ-bench scenarios are added in v0.2.
+against committed cassettes. Every scenario drives the real agent
+through `Harness.run/3` + `Harness.resume/2`; reads/writes hit
+`TauBenchAirline.Domain`, and LLM traffic comes from
+`test/cassettes/tau_bench_airline_scenarios/*.json`.
 
 Cassettes use `template: [preset: :llm]` so multi-turn replays stay
 stable against fresh Anthropic `toolu_*` / `msg_*` / `req_*` IDs. See
