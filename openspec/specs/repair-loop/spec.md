@@ -1,7 +1,8 @@
-# repair-loop — Specification (v0.1.2 deltas)
+# repair-loop Specification
 
-## MODIFIED Requirements
-
+## Purpose
+TBD - created by archiving change audit-followup-v0-1-2. Update Purpose after archive.
+## Requirements
 ### Requirement: Validation error formatting
 
 `AshHarness.Harness.Repair.format_feedback/2` SHALL accept any term
@@ -49,3 +50,4 @@ and return `true` for `%AshHarness.Errors.ValidationFailed{}` and
 - **WHEN** `retryable?/1` receives each of the six error struct types
 - **THEN** validation and reasoning-required return `true`; the
   other four return `false`
+

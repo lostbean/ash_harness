@@ -57,8 +57,6 @@ SHALL also appear in the `[:ash_harness, :delegation, :started]` and
   delegation carry the same `target_trajectory_id` value that appears
   in the trajectory entry's `data.target_trajectory_id`
 
-## MODIFIED Requirements
-
 ### Requirement: Delegation initiation
 
 `AshHarness.Delegation.initiate/4` SHALL accept the caller's session,

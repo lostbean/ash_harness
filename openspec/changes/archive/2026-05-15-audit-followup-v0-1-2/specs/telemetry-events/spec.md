@@ -34,8 +34,6 @@ can use them to compute pass-rate metrics without OTel span sampling.
   `[:ash_harness, :policy, :checked]` have all fired; the last has
   `passed: false`; `[:ash_harness, :policy, :denied]` has also fired
 
-## MODIFIED Requirements
-
 ### Requirement: AshHarness telemetry namespace
 
 All AshHarness-emitted telemetry events SHALL use the

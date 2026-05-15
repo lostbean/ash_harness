@@ -1,7 +1,8 @@
-# harness-runtime — Specification (v0.1.2 deltas)
+# harness-runtime Specification
 
-## ADDED Requirements
-
+## Purpose
+TBD - created by archiving change audit-followup-v0-1-2. Update Purpose after archive.
+## Requirements
 ### Requirement: Per-dispatch request_id
 
 Every call to `AshHarness.Harness.GeneratedAction.dispatch/5` SHALL
@@ -42,8 +43,6 @@ class atom suitable for OTel `error.class` attribute usage.
   `AshHarness.Errors.classify/1`
 - **THEN** the function returns an atom in the set
   `[:scope, :policy, :validation, :budget, :reasoning, :delegation]`
-
-## MODIFIED Requirements
 
 ### Requirement: Scope gate
 
@@ -151,3 +150,4 @@ sequence.
 - **WHEN** a `:read` action returns successfully
 - **THEN** the trajectory entry's `data` is `%{}` (or an event-
   specific empty default)
+
