@@ -9,7 +9,6 @@ defmodule AshHarness.Eval.RunnerTerminatedReasonTest do
   use ExUnit.Case, async: false
 
   alias AshHarness.Eval.Runner
-  alias AshHarness.Test.TriageAgent
 
   describe "terminated_reason is an atom from the spec enum" do
     test ":not_executed for scenarios with no agent" do
@@ -44,7 +43,7 @@ defmodule AshHarness.Eval.RunnerTerminatedReasonTest do
         use AshHarness.Eval
 
         scenario "replay-miss" do
-          agent(TriageAgent)
+          agent(AshHarness.Test.TriageAgent)
           prompt("Do something.")
 
           gate :invariant do
