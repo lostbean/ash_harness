@@ -129,6 +129,12 @@ design / tasks record.
   compile with a verifier error. Migration: add an `as:` alias to
   every `delegate` (short, case-insensitive — what the LLM passes to
   the skill). The compile error names the offending delegate.
+- **Delegate DSL `for:` renamed to `purpose:`**. The `for:` option on
+  `delegate` collided with `Kernel.SpecialForms.for/1`, producing a
+  Spark import warning that broke `--warnings-as-errors` builds.
+  Callers update `delegate Foo, as: "x", for: "..."` to
+  `delegate Foo, as: "x", purpose: "..."`. Introspection
+  (`Agent.Info.delegates/1`) now exposes `:purpose` instead of `:for`.
 - **`session.metadata.approvals` map shape** is now a richer record
   (`%{decision, respondent, recorded_at}`) instead of a bare decision
   atom. Code that read approvals straight off the session before
@@ -136,14 +142,6 @@ design / tasks record.
   legacy paths the gate still tolerates the atom form).
 - **`repair:exhausted` `:attempts` → `:total_attempts`** — see
   Changed.
-
-### Known issues
-
-- The `delegate(..., for: "...")` DSL emits a benign Spark-time
-  warning: `for/1 conflicts with Elixir special forms, the import has
-  been discarded`. The `for:` value is still captured correctly (it's
-  a keyword arg, not the `for` import). Will be silenced when we
-  rename the option in v0.2; harmless in the meantime.
 
 ## v0.1.1 — Runtime completion
 

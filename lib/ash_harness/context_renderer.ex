@@ -206,7 +206,7 @@ defmodule AshHarness.ContextRenderer do
       delegates ->
         lines =
           Enum.map_join(delegates, "\n", fn d ->
-            "- #{inspect(d.agent_module)} — #{d.for}"
+            "- #{inspect(d.agent_module)} — #{d.purpose}"
           end)
 
         "# Delegation\n\nYou may ask:\n\n" <> lines <> "\n"

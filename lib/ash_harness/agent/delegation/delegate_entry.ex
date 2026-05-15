@@ -8,12 +8,12 @@ defmodule AshHarness.Agent.Delegation.DelegateEntry do
   `delegate(target, question)` skill.
   """
 
-  defstruct [:agent_module, :as, :for, __spark_metadata__: nil]
+  defstruct [:agent_module, :as, :purpose, __spark_metadata__: nil]
 
   @type t :: %__MODULE__{
           agent_module: module(),
           as: String.t() | nil,
-          for: String.t(),
+          purpose: String.t(),
           __spark_metadata__: term() | nil
         }
 end

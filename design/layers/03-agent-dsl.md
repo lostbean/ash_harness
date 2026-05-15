@@ -49,7 +49,8 @@ defmodule MyApp.Agents.TriageAgent do
 
   delegates_to do
     delegate MyApp.Agents.BillingAgent,
-      for: "customer account status checks"
+      as: "billing",
+      purpose: "customer account status checks"
   end
 
   constraints do
@@ -122,12 +123,12 @@ write actions, but installations can change this.
 
 ```elixir
 delegates_to do
-  delegate AgentModule, for: String.t()
+  delegate AgentModule, as: String.t(), purpose: String.t()
   # zero or more
 end
 ```
 
-`for:` is a natural-language description of what this delegate handles
+`purpose:` is a natural-language description of what this delegate handles
 — surfaced in the agent's context so the LLM knows when to delegate.
 **The delegate uses its own scope at delegation time** (anti-corruption,
 ADR 0004).
@@ -170,9 +171,9 @@ defmodule AshHarness.Agent.Behavior.Strategy do
 end
 
 defmodule AshHarness.Agent.Delegation.DelegateEntry do
-  defstruct [:agent_module, :for]
+  defstruct [:agent_module, :as, :purpose]
 
-  @type t :: %__MODULE__{agent_module: module(), for: String.t()}
+  @type t :: %__MODULE__{agent_module: module(), as: String.t(), purpose: String.t()}
 end
 ```
 
@@ -304,9 +305,9 @@ defmodule MyApp.Agents.SupervisorAgent do
   end
 
   delegates_to do
-    delegate MyApp.Agents.TriageAgent,    for: "newly opened tickets"
-    delegate MyApp.Agents.IncidentAgent,  for: "tickets tagged as incidents"
-    delegate MyApp.Agents.BillingAgent,   for: "tickets that touch billing or refunds"
+    delegate MyApp.Agents.TriageAgent,   as: "triage",   purpose: "newly opened tickets"
+    delegate MyApp.Agents.IncidentAgent, as: "incident", purpose: "tickets tagged as incidents"
+    delegate MyApp.Agents.BillingAgent,  as: "billing",  purpose: "tickets that touch billing or refunds"
   end
 
   constraints do

@@ -23,7 +23,7 @@ within trust zone, text across).
 delegates_to do
   delegate MyApp.Agents.BillingAgent,
     as: "billing",
-    for: "customer account status checks"
+    purpose: "customer account status checks"
 end
 ```
 
@@ -31,7 +31,7 @@ The `as:` value (required since v0.1.2) is the case-insensitive alias
 the LLM passes to the `delegate` skill — it picks the matching entry
 out of the agent's `delegates_to` list. A compile-time verifier
 (`AshHarness.Agent.Verifiers.DelegateAliasesUnique`) rejects duplicate
-aliases. The natural-language `for:` description is rendered into
+aliases. The natural-language `purpose:` description is rendered into
 agent A's context as a delegation hint:
 
 ```

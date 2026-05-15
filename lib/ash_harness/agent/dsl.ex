@@ -157,7 +157,7 @@ defmodule AshHarness.Agent.Dsl do
     name: :delegate,
     describe: "Allow this agent to delegate questions to another agent.",
     examples: [
-      ~s|delegate MyApp.AccountAgent, as: "accounts", for: "Customer-account questions."|
+      ~s|delegate MyApp.AccountAgent, as: "accounts", purpose: "Customer-account questions."|
     ],
     target: AshHarness.Agent.Delegation.DelegateEntry,
     args: [:agent_module],
@@ -174,7 +174,7 @@ defmodule AshHarness.Agent.Dsl do
           "Short, case-insensitive alias the LLM uses to refer to this delegate " <>
             "(e.g. `\"billing\"`)."
       ],
-      for: [
+      purpose: [
         type: :string,
         required: true,
         doc: "Description of when to delegate to this agent."
@@ -191,7 +191,7 @@ defmodule AshHarness.Agent.Dsl do
     examples: [
       """
       delegates_to do
-        delegate MyApp.AccountAgent, for: "Customer-account questions."
+        delegate MyApp.AccountAgent, as: "accounts", purpose: "Customer-account questions."
       end
       """
     ],

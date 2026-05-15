@@ -68,7 +68,7 @@ defmodule AshHarness.AgentTest do
 
   describe "delegates" do
     test "exposed via Info" do
-      assert [%DelegateEntry{agent_module: TriageAgent, for: _, as: alias_name}] =
+      assert [%DelegateEntry{agent_module: TriageAgent, purpose: _, as: alias_name}] =
                Info.delegates(DelegatingAgent)
 
       assert is_binary(alias_name)
@@ -247,7 +247,7 @@ defmodule AshHarness.AgentTest do
             end
 
             delegates_to do
-              delegate(String, as: "string", for: "not an agent")
+              delegate(String, as: "string", purpose: "not an agent")
             end
           end
         end
@@ -305,7 +305,7 @@ defmodule AshHarness.AgentTest do
             end
 
             delegates_to do
-              delegate(AshHarness.Test.TriageAgent, for: "...")
+              delegate(AshHarness.Test.TriageAgent, purpose: "...")
             end
           end
         end
@@ -332,8 +332,8 @@ defmodule AshHarness.AgentTest do
             end
 
             delegates_to do
-              delegate(AshHarness.Test.TriageAgent, as: "billing", for: "...")
-              delegate(AshHarness.Test.ReadOnlyAgent, as: "Billing", for: "...")
+              delegate(AshHarness.Test.TriageAgent, as: "billing", purpose: "...")
+              delegate(AshHarness.Test.ReadOnlyAgent, as: "Billing", purpose: "...")
             end
           end
         end
