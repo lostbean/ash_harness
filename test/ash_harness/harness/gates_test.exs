@@ -1,6 +1,7 @@
 defmodule AshHarness.Harness.GatesTest do
   use ExUnit.Case, async: true
 
+  alias AshHarness.Errors
   alias AshHarness.Harness.BudgetGate
   alias AshHarness.Harness.ConfirmationGate
   alias AshHarness.Harness.Intent
@@ -36,9 +37,13 @@ defmodule AshHarness.Harness.GatesTest do
                ScopeGate.check(session(), intent(AshHarness.Test.Ticket, :read))
     end
 
-    test "rejects out-of-scope action" do
-      assert {:error, :scope_violation} =
+    test "rejects out-of-scope action with a ScopeViolation struct" do
+      assert {:error, %Errors.ScopeViolation{} = err} =
                ScopeGate.check(session(), intent(AshHarness.Test.Ticket, :destroy))
+
+      assert err.agent == TriageAgent
+      assert err.resource == AshHarness.Test.Ticket
+      assert err.action == :destroy
     end
   end
 
@@ -48,9 +53,13 @@ defmodule AshHarness.Harness.GatesTest do
                ReasoningGate.check(session(), intent(AshHarness.Test.Ticket, :read))
     end
 
-    test "rejects when reasoning required but missing" do
-      assert {:error, :reasoning_required} =
+    test "rejects when reasoning required but missing, with a ReasoningRequired struct" do
+      assert {:error, %Errors.ReasoningRequired{} = err} =
                ReasoningGate.check(session(), intent(AshHarness.Test.Ticket, :assign))
+
+      assert err.agent == TriageAgent
+      assert err.resource == AshHarness.Test.Ticket
+      assert err.action == :assign
     end
 
     test "passes when reasoning present" do
@@ -98,12 +107,16 @@ defmodule AshHarness.Harness.GatesTest do
                BudgetGate.check(session, intent(AshHarness.Test.Ticket, :open_ticket))
     end
 
-    test "rejects when budget is exhausted" do
+    test "rejects when budget is exhausted, with a MutationLimitExceeded struct" do
       # TriageAgent has max_mutations_per_turn 5
       session = session(mutation_count: 5)
 
-      assert {:error, :budget_exceeded} =
+      assert {:error, %Errors.MutationLimitExceeded{} = err} =
                BudgetGate.check(session, intent(AshHarness.Test.Ticket, :open_ticket))
+
+      assert err.agent == TriageAgent
+      assert err.count == 5
+      assert err.max == 5
     end
   end
 

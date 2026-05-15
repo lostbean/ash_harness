@@ -42,6 +42,13 @@ defmodule AshHarness.Harness.GeneratedAction do
     session = fetch_session(ctx, agent_module, pid)
     started_at = System.monotonic_time(:millisecond)
 
+    # Per design Decision 5 (v0.1.2): every dispatch generates a fresh
+    # UUID v4 request_id at entry. This id correlates all telemetry
+    # events and the OTel span attribute for one tool-call lifecycle.
+    # The session id stays put on `session.request_id`; the per-turn
+    # id stays in the caller's session.
+    request_id = gen_request_id()
+
     reasoning =
       Map.get(params, :_reasoning) ||
         Map.get(params, "_reasoning") ||
@@ -53,7 +60,7 @@ defmodule AshHarness.Harness.GeneratedAction do
       action: action_name,
       input: strip_internal(params),
       reasoning: reasoning,
-      request_id: Map.get(ctx, :request_id) || gen_request_id(),
+      request_id: request_id,
       metadata: %{agent: agent_module}
     }
 
@@ -71,8 +78,10 @@ defmodule AshHarness.Harness.GeneratedAction do
 
   # Set the always-on attributes that don't depend on which gate
   # we're about to run: session/request ids and the current
-  # repair-attempt count. Gate-specific .passed / budget.* attrs are
-  # set inside each `*_check` clause below.
+  # repair-attempt count. The session id sources from `session.request_id`
+  # (the per-conversation id) and the per-dispatch `request.id` from
+  # the freshly generated `intent.request_id`. Gate-specific .passed /
+  # budget.* attrs are set inside each `*_check` clause below.
   defp set_dispatch_otel_attrs(session, intent, repair_attempts) do
     session_id = session.request_id || intent.request_id
 
@@ -286,9 +295,12 @@ defmodule AshHarness.Harness.GeneratedAction do
     }
   end
 
-  defp result_status_for_error({:validation_failed, _}), do: :validation_failed
+  defp result_status_for_error(%AshHarness.Errors.ValidationFailed{}), do: :validation_failed
+  defp result_status_for_error(%AshHarness.Errors.PolicyDenied{}), do: :policy_denied
+  defp result_status_for_error(%AshHarness.Errors.ScopeViolation{}), do: :scope_violation
+  defp result_status_for_error(%AshHarness.Errors.ReasoningRequired{}), do: :reasoning_required
+  defp result_status_for_error(%AshHarness.Errors.MutationLimitExceeded{}), do: :budget_exceeded
   defp result_status_for_error(%Ash.Error.Invalid{}), do: :validation_failed
-  defp result_status_for_error({:policy_denied, _}), do: :policy_denied
   defp result_status_for_error(%Ash.Error.Forbidden{}), do: :policy_denied
   defp result_status_for_error(_), do: :error
 
@@ -322,9 +334,14 @@ defmodule AshHarness.Harness.GeneratedAction do
     )
   end
 
-  defp reason_class({:validation_failed, _}), do: :validation
+  defp reason_class(%AshHarness.Errors.ValidationFailed{}), do: :validation
+  defp reason_class(%AshHarness.Errors.PolicyDenied{}), do: :policy
+  defp reason_class(%AshHarness.Errors.ScopeViolation{}), do: :scope
+  defp reason_class(%AshHarness.Errors.ReasoningRequired{}), do: :reasoning
+  defp reason_class(%AshHarness.Errors.MutationLimitExceeded{}), do: :budget
+  defp reason_class(%AshHarness.Errors.DelegationNotPermitted{}), do: :delegation
+  defp reason_class(%AshHarness.Errors.DelegationDepthExceeded{}), do: :delegation
   defp reason_class(%Ash.Error.Invalid{}), do: :validation
-  defp reason_class({:policy_denied, _}), do: :policy
   defp reason_class(%Ash.Error.Forbidden{}), do: :policy
   defp reason_class(reason) when is_atom(reason), do: reason
   defp reason_class(_), do: :unknown
@@ -335,8 +352,11 @@ defmodule AshHarness.Harness.GeneratedAction do
     |> Map.delete("_reasoning")
   end
 
-  defp gen_request_id,
-    do: "req_" <> Base.url_encode64(:crypto.strong_rand_bytes(8), padding: false)
+  # Per-dispatch request_id. `Uniq.UUID` is a transitive dep we already
+  # pull in via `:jido`; using uuid4 keeps the format predictable and
+  # avoids adding a new dep. (`Ecto.UUID` would also work but it's not
+  # in our direct dep set.)
+  defp gen_request_id, do: Uniq.UUID.uuid4()
 
   defp render_result(%Intent{action: _}, records) when is_list(records) do
     %{count: length(records), records: Enum.map(records, &sanitize/1)}

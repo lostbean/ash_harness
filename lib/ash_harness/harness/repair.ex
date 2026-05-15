@@ -5,7 +5,21 @@ defmodule AshHarness.Harness.Repair do
   Turns Ash errors into LLM-readable feedback strings, classifies
   retryability, and tracks per-action attempt counts via the
   session's `:repair_attempts` map.
+
+  As of v0.1.2 the gates return structured `%AshHarness.Errors.*{}`
+  errors; this module pattern-matches on those structs (no atom
+  fallback) for `format_feedback/2` and `retryable?/1`.
   """
+
+  alias AshHarness.Errors.{
+    DelegationDepthExceeded,
+    DelegationNotPermitted,
+    MutationLimitExceeded,
+    PolicyDenied,
+    ReasoningRequired,
+    ScopeViolation,
+    ValidationFailed
+  }
 
   alias AshHarness.Harness.Intent
 
@@ -17,39 +31,49 @@ defmodule AshHarness.Harness.Repair do
   @spec format_feedback(term(), Intent.t() | nil) :: String.t()
   def format_feedback(error, intent \\ nil)
 
-  def format_feedback({:validation_failed, %Ash.Error.Invalid{} = err}, intent) do
+  def format_feedback(%ValidationFailed{ash_error: %Ash.Error.Invalid{} = err}, intent) do
     format_validation(err, intent)
+  end
+
+  def format_feedback(%PolicyDenied{ash_error: %Ash.Error.Forbidden{} = err}, intent) do
+    format_forbidden(err, intent)
+  end
+
+  def format_feedback(%PolicyDenied{}, intent) do
+    format_forbidden(%Ash.Error.Forbidden{}, intent)
+  end
+
+  def format_feedback(%ScopeViolation{}, _intent) do
+    "That action is not in scope. Choose a different tool."
+  end
+
+  def format_feedback(%ReasoningRequired{}, _intent) do
+    "This action requires you to provide a `reasoning` argument before " <>
+      "invoking. Include reasoning that explains the intent."
+  end
+
+  def format_feedback(%MutationLimitExceeded{}, _intent) do
+    "Per-turn mutation budget exhausted. Continue with read-only work or " <>
+      "ask the user for the next turn."
+  end
+
+  def format_feedback(%DelegationNotPermitted{from: from, to: to}, _intent) do
+    "Delegation not permitted: #{inspect(from)} cannot delegate to " <>
+      "#{inspect(to)}. Choose a different target or handle this " <>
+      "yourself."
+  end
+
+  def format_feedback(%DelegationDepthExceeded{max_depth: max}, _intent) do
+    "Delegation depth limit (#{inspect(max)}) reached. Handle this " <>
+      "directly instead of delegating further."
   end
 
   def format_feedback(%Ash.Error.Invalid{} = err, intent) do
     format_validation(err, intent)
   end
 
-  def format_feedback({:policy_denied, %Ash.Error.Forbidden{} = err}, intent) do
-    format_forbidden(err, intent)
-  end
-
   def format_feedback(%Ash.Error.Forbidden{} = err, intent) do
     format_forbidden(err, intent)
-  end
-
-  def format_feedback(:scope_violation, _intent) do
-    "That action is not in scope. Choose a different tool."
-  end
-
-  def format_feedback(:reasoning_required, _intent) do
-    "This action requires you to provide a `reasoning` argument before " <>
-      "invoking. Include reasoning that explains the intent."
-  end
-
-  def format_feedback(:budget_exceeded, _intent) do
-    "Per-turn mutation budget exhausted. Continue with read-only work or " <>
-      "ask the user for the next turn."
-  end
-
-  def format_feedback(:policy_denied, _intent) do
-    "Policy denied the requested action. Try a different approach or, if " <>
-      "applicable, delegate to another agent."
   end
 
   def format_feedback(:repair_exhausted, %Intent{resource: resource, action: action}) do
@@ -153,17 +177,22 @@ defmodule AshHarness.Harness.Repair do
   defp intent_has_delegate_option?(_), do: false
 
   @doc """
-  Returns `true` for retryable errors (validation, transport),
-  `false` for terminal ones (policy, configuration, unexpected).
+  Returns `true` for retryable errors (validation, missing reasoning),
+  `false` for terminal ones (policy, scope, budget, delegation,
+  configuration, unexpected).
+
+  Pattern-matches on `%AshHarness.Errors.*{}` structs only; legacy
+  atom forms are no longer recognized.
   """
   @spec retryable?(term()) :: boolean()
-  def retryable?({:validation_failed, _}), do: true
+  def retryable?(%ValidationFailed{}), do: true
+  def retryable?(%ReasoningRequired{}), do: true
+  def retryable?(%PolicyDenied{}), do: false
+  def retryable?(%ScopeViolation{}), do: false
+  def retryable?(%MutationLimitExceeded{}), do: false
+  def retryable?(%DelegationNotPermitted{}), do: false
+  def retryable?(%DelegationDepthExceeded{}), do: false
   def retryable?(%Ash.Error.Invalid{}), do: true
-  def retryable?({:policy_denied, _}), do: false
   def retryable?(%Ash.Error.Forbidden{}), do: false
-  def retryable?(:scope_violation), do: false
-  def retryable?(:reasoning_required), do: true
-  def retryable?(:budget_exceeded), do: false
-  def retryable?(:policy_denied), do: false
   def retryable?(_), do: false
 end

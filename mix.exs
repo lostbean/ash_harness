@@ -1,7 +1,7 @@
 defmodule AshHarness.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.1.2"
   @source_url "https://github.com/ash-project/ash_harness"
 
   def cli do
@@ -76,6 +76,7 @@ defmodule AshHarness.MixProject do
     [
       {:ash, "~> 3.0"},
       {:spark, "~> 2.0"},
+      {:splode, "~> 0.2"},
       {:jido_composer, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:telemetry, "~> 1.0"},

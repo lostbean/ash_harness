@@ -50,7 +50,17 @@ defmodule AshHarness.Harness.OtelAttributesTest do
     assert "ash_harness.budget.max" in ks
     assert "ash_harness.repair.attempt" in ks
     assert {"ash_harness.session.id", "req-otel-ok"} in flat
-    assert {"ash_harness.request.id", "req-otel-ok"} in flat
+    # Per v0.1.2 Decision 5: request.id is a fresh per-dispatch UUID,
+    # distinct from session.id. Assert the attribute is set to a
+    # non-empty binary and is NOT the session id.
+    request_id =
+      Enum.find_value(flat, fn
+        {"ash_harness.request.id", v} -> v
+        _ -> nil
+      end)
+
+    assert is_binary(request_id) and byte_size(request_id) > 0
+    refute request_id == "req-otel-ok"
 
     budget_max =
       Enum.find_value(flat, fn
@@ -80,9 +90,19 @@ defmodule AshHarness.Harness.OtelAttributesTest do
     # have been set.
     refute "ash_harness.policy.passed" in ks
 
-    # Session/request ids are always written at dispatch entry.
-    assert {"ash_harness.request.id", "req-otel-scope"} in flat
+    # Session id sources from session.request_id; request.id is the
+    # fresh per-dispatch UUID (Decision 5).
     assert {"ash_harness.session.id", "req-otel-scope"} in flat
+    assert "ash_harness.request.id" in ks
+
+    request_id =
+      Enum.find_value(flat, fn
+        {"ash_harness.request.id", v} -> v
+        _ -> nil
+      end)
+
+    assert is_binary(request_id) and byte_size(request_id) > 0
+    refute request_id == "req-otel-scope"
   end
 
   test "budget exceeded sets scope.passed=true and budget.count/max with the offending values" do

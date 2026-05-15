@@ -32,7 +32,7 @@ defmodule AshHarness.Harness.ConfirmationGate do
             agent: agent,
             resource: intent.resource,
             action: intent.action,
-            request_id: session.request_id || intent.request_id
+            request_id: intent.request_id
           }
         )
 
@@ -61,7 +61,7 @@ defmodule AshHarness.Harness.ConfirmationGate do
             agent: agent,
             resource: intent.resource,
             action: intent.action,
-            request_id: session.request_id || intent.request_id
+            request_id: intent.request_id
           }
         )
 

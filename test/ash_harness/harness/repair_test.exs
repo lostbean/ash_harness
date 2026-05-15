@@ -1,6 +1,7 @@
 defmodule AshHarness.Harness.RepairTest do
   use ExUnit.Case, async: false
 
+  alias AshHarness.Errors
   alias AshHarness.Harness.GeneratedAction
   alias AshHarness.Harness.Intent
   alias AshHarness.Harness.Repair
@@ -17,13 +18,20 @@ defmodule AshHarness.Harness.RepairTest do
     }
   end
 
-  describe "format_feedback/2 with validation error" do
+  describe "format_feedback/2 with ValidationFailed struct" do
     test "lists one bullet per field error" do
-      err = %Ash.Error.Invalid{
+      ash_err = %Ash.Error.Invalid{
         errors: [
           %{field: :assigned_to, message: "is required"},
           %{field: :status, message: "must be open"}
         ]
+      }
+
+      err = %Errors.ValidationFailed{
+        agent: AshHarness.Test.TriageAgent,
+        resource: AshHarness.Test.Ticket,
+        action: :assign,
+        ash_error: ash_err
       }
 
       text = Repair.format_feedback(err, intent())
@@ -33,58 +41,85 @@ defmodule AshHarness.Harness.RepairTest do
     end
 
     test "uses general: when error has no field" do
-      err = %Ash.Error.Invalid{errors: [%{message: "something failed"}]}
+      err = %Errors.ValidationFailed{
+        ash_error: %Ash.Error.Invalid{errors: [%{message: "something failed"}]}
+      }
 
       text = Repair.format_feedback(err)
       assert text =~ "- general: something failed"
     end
   end
 
-  describe "format_feedback/2 with policy denial" do
+  describe "format_feedback/2 with PolicyDenied struct" do
     test "explains the denial" do
-      err = %Ash.Error.Forbidden{}
+      err = %Errors.PolicyDenied{
+        agent: AshHarness.Test.TriageAgent,
+        resource: AshHarness.Test.Ticket,
+        action: :assign,
+        ash_error: %Ash.Error.Forbidden{}
+      }
+
       text = Repair.format_feedback(err, intent())
       assert text =~ "Authorization denied"
       refute text =~ "Elixir."
     end
   end
 
-  describe "format_feedback/2 with atom reasons" do
-    test ":scope_violation" do
-      assert Repair.format_feedback(:scope_violation) =~ "not in scope"
+  describe "format_feedback/2 with gate-failure structs" do
+    test "ScopeViolation -> 'not in scope'" do
+      err = %Errors.ScopeViolation{
+        agent: AshHarness.Test.TriageAgent,
+        resource: AshHarness.Test.Ticket,
+        action: :destroy
+      }
+
+      assert Repair.format_feedback(err) =~ "not in scope"
     end
 
-    test ":reasoning_required" do
-      assert Repair.format_feedback(:reasoning_required) =~ "reasoning"
+    test "ReasoningRequired -> 'reasoning'" do
+      err = %Errors.ReasoningRequired{
+        agent: AshHarness.Test.TriageAgent,
+        resource: AshHarness.Test.Ticket,
+        action: :assign
+      }
+
+      assert Repair.format_feedback(err) =~ "reasoning"
     end
 
-    test ":budget_exceeded" do
-      assert Repair.format_feedback(:budget_exceeded) =~ "budget"
-    end
+    test "MutationLimitExceeded -> 'budget'" do
+      err = %Errors.MutationLimitExceeded{
+        agent: AshHarness.Test.TriageAgent,
+        count: 5,
+        max: 5
+      }
 
-    test ":policy_denied" do
-      assert Repair.format_feedback(:policy_denied) =~ "Policy denied"
+      assert Repair.format_feedback(err) =~ "budget"
     end
   end
 
   describe "retryable?/1" do
-    test "true for validation errors" do
-      assert Repair.retryable?(%Ash.Error.Invalid{})
-      assert Repair.retryable?({:validation_failed, %Ash.Error.Invalid{}})
+    test "true for ValidationFailed struct" do
+      assert Repair.retryable?(%Errors.ValidationFailed{})
     end
 
-    test "false for policy denial" do
-      refute Repair.retryable?(%Ash.Error.Forbidden{})
-      refute Repair.retryable?({:policy_denied, %Ash.Error.Forbidden{}})
+    test "true for ReasoningRequired struct" do
+      assert Repair.retryable?(%Errors.ReasoningRequired{})
     end
 
-    test "false for scope/budget terminal errors" do
-      refute Repair.retryable?(:scope_violation)
-      refute Repair.retryable?(:budget_exceeded)
+    test "false for PolicyDenied struct" do
+      refute Repair.retryable?(%Errors.PolicyDenied{})
     end
 
-    test "true for :reasoning_required (LLM can retry with reasoning)" do
-      assert Repair.retryable?(:reasoning_required)
+    test "false for ScopeViolation struct" do
+      refute Repair.retryable?(%Errors.ScopeViolation{})
+    end
+
+    test "false for MutationLimitExceeded struct" do
+      refute Repair.retryable?(%Errors.MutationLimitExceeded{})
+    end
+
+    test "false for DelegationNotPermitted struct" do
+      refute Repair.retryable?(%Errors.DelegationNotPermitted{})
     end
   end
 

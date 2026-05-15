@@ -6,9 +6,15 @@ defmodule AshHarness.Delegation do
 
   See `design/layers/09-delegation.md` (and ADR 0004) for the rationale
   behind the text-only return shape.
+
+  Refusals return `%AshHarness.Errors.DelegationNotPermitted{}` or
+  `%AshHarness.Errors.DelegationDepthExceeded{}` (v0.1.2 struct-error
+  contract).
   """
 
   alias AshHarness.Agent.Info, as: AgentInfo
+  alias AshHarness.Errors.DelegationDepthExceeded
+  alias AshHarness.Errors.DelegationNotPermitted
   alias AshHarness.Harness
   alias AshHarness.Harness.Session
   alias AshHarness.Harness.TrajectoryEntry
@@ -19,28 +25,38 @@ defmodule AshHarness.Delegation do
   @doc """
   Initiate a delegation. Returns:
     * `{:ok, reply_text, updated_caller_session, delegate_trajectory}`
-    * `{:error, :delegation_not_permitted}`
-    * `{:error, :delegation_depth_exceeded}`
-    * `{:error, term()}`
+    * `{:error, %AshHarness.Errors.DelegationNotPermitted{}}`
+    * `{:error, %AshHarness.Errors.DelegationDepthExceeded{}}`
+    * `{:error, term()}` for downstream delegate failures
 
   ## Options
     * `:max_depth` — overrides the configured cap.
   """
   @spec initiate(Session.t(), module(), String.t(), keyword()) ::
           {:ok, String.t(), Session.t(), [TrajectoryEntry.t()]}
-          | {:error, :delegation_not_permitted}
-          | {:error, :delegation_depth_exceeded}
+          | {:error, DelegationNotPermitted.t()}
+          | {:error, DelegationDepthExceeded.t()}
           | {:error, term()}
   def initiate(%Session{} = caller, target, question, opts \\ [])
       when is_atom(target) and is_binary(question) do
+    max = max_depth(opts)
+    depth = current_depth(caller)
+
     cond do
       not AgentInfo.delegate_for?(caller.agent, target) ->
         emit_denied(caller, target, :not_permitted)
-        {:error, :delegation_not_permitted}
+        {:error, %DelegationNotPermitted{from: caller.agent, to: target, reason: :not_permitted}}
 
-      current_depth(caller) >= max_depth(opts) ->
+      depth >= max ->
         emit_denied(caller, target, :depth_exceeded)
-        {:error, :delegation_depth_exceeded}
+
+        {:error,
+         %DelegationDepthExceeded{
+           from: caller.agent,
+           to: target,
+           depth: depth,
+           max_depth: max
+         }}
 
       true ->
         do_initiate(caller, target, question, opts)

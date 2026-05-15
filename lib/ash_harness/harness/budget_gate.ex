@@ -5,30 +5,36 @@ defmodule AshHarness.Harness.BudgetGate do
   not increment the counter; failed mutations don't either. The
   counter is bumped only after a successful mutation (see
   `AshHarness.Harness.dispatch/5`).
+
+  Returns `{:error, %AshHarness.Errors.MutationLimitExceeded{}}` on
+  refusal (v0.1.2 struct-error contract).
   """
 
   alias AshHarness.Agent.Info, as: AgentInfo
+  alias AshHarness.Errors.MutationLimitExceeded
   alias AshHarness.Harness.Intent
   alias AshHarness.Harness.Session
   alias AshHarness.Telemetry
 
   @mutating_types ~w(create update destroy)a
 
-  @spec check(Session.t(), Intent.t()) :: :ok | {:error, :budget_exceeded}
-  def check(%Session{agent: agent, mutation_count: count} = session, %Intent{} = intent) do
-    if mutating?(intent) and count >= AgentInfo.max_mutations_per_turn(agent) do
+  @spec check(Session.t(), Intent.t()) :: :ok | {:error, MutationLimitExceeded.t()}
+  def check(%Session{agent: agent, mutation_count: count}, %Intent{} = intent) do
+    max = AgentInfo.max_mutations_per_turn(agent)
+
+    if mutating?(intent) and count >= max do
       Telemetry.emit(
         [:ash_harness, :budget, :exceeded],
-        %{count: count, max: AgentInfo.max_mutations_per_turn(agent)},
+        %{count: count, max: max},
         %{
           agent: agent,
           resource: intent.resource,
           action: intent.action,
-          request_id: session.request_id || intent.request_id
+          request_id: intent.request_id
         }
       )
 
-      {:error, :budget_exceeded}
+      {:error, %MutationLimitExceeded{agent: agent, count: count, max: max}}
     else
       :ok
     end
