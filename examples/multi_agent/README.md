@@ -38,3 +38,19 @@ Depth is capped at 3 by default (configurable via
 
 See `AshHarness.Delegation` for the API and ADR 0004 for the rationale
 behind the text-only return shape.
+
+## Runnable demo
+
+A self-contained script that exercises the introspection surface (no
+LLM required) is shipped in this directory. It uses the
+`AshHarness.Test.DelegatingAgent` from the test support tree, which
+declares `delegates_to AshHarness.Test.TriageAgent`. Run from the
+repository root:
+
+```
+mix run examples/multi_agent/run.exs
+```
+
+It prints the caller's declared delegates, the actor / scope isolation
+between caller and target, the `delegate` meta-tool that ToolGen emits
+when `delegates_to` is non-empty, and the current depth cap.

@@ -253,6 +253,34 @@ defmodule AshHarness.AgentTest do
 
       assert has_dsl_error?(errors, ~r/does not `use AshHarness\.Agent`/)
     end
+
+    test "rejects two scoped resources whose short names collide" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshHarness.AgentTest.CollidingShortNamesAgent do
+            use AshHarness.Agent, domains: [AshHarness.Test.Domain]
+
+            identity do
+              name("x")
+              description("x")
+              actor(%{})
+            end
+
+            scope do
+              resource AshHarness.Test.Ticket do
+                actions([:read])
+              end
+
+              resource AshHarness.Test.Alt.Ticket do
+                actions([:read])
+              end
+            end
+          end
+        end
+
+      assert has_dsl_error?(errors, ~r/share the short name "ticket"/)
+      assert has_dsl_error?(errors, ~r/Add `as: "<unique>"`/)
+    end
   end
 
   describe "persisted derived data" do

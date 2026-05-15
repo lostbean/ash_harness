@@ -1,18 +1,44 @@
-# Postgres Example (gated)
+# Postgres Example
 
-Mirrors the `triage` example but backed by `AshPostgres`. Gated by
-`MIX_ENV=postgres mix test` per ADR 0008.
+A runnable demo that mirrors `examples/triage/` but with the resource
+backed by `AshPostgres` instead of ETS. Demonstrates ADR 0008: the
+harness, gates, eval framework, and ToolGen are data-layer agnostic;
+only the `data_layer:` and the `postgres do` block differ.
 
-This directory is a placeholder for v0.1.0 — the Postgres-backed
-resource definitions wire identically to ETS resources except for the
-`data_layer:` and the corresponding `postgres do ... end` block.
+## Prerequisites
 
-To enable:
+1. `ash_postgres` is declared `optional: true` in this library, so the
+   host application must depend on it:
 
-1. Add `{:ash_postgres, "~> 2.0"}` to your host application.
-2. Mirror the Ticket / Project / Member resources with
-   `data_layer: AshPostgres.DataLayer`.
-3. Run `MIX_ENV=postgres mix test --only postgres` to verify.
+   ```elixir
+   {:ash_postgres, "~> 2.0"}
+   ```
 
-The harness, gates, and eval framework are data-layer agnostic; no
-changes there.
+   then `mix deps.get`.
+
+2. A reachable Postgres server. By default the script connects to:
+
+   ```
+   ecto://postgres:postgres@localhost/ash_harness_postgres_example
+   ```
+
+   Override via `DATABASE_URL`.
+
+## Run
+
+```
+mix run examples/postgres/run.exs
+```
+
+The script:
+
+1. Defines a `Domain`, a `Ticket` resource (with `data_layer:
+   AshPostgres.DataLayer`), and an agent over them.
+2. Boots a Repo and creates the `postgres_example_tickets` table if it
+   doesn't exist.
+3. Prints the agent's tool list and round-trips a ticket through
+   `:open_ticket` → `:read` → `:resolve` → `:destroy`.
+
+If `AshPostgres` isn't loaded, the script exits with installation hints
+and a non-zero status code is **not** raised — it is treated as a
+deferred-environment, not a failure.

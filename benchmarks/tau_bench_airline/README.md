@@ -80,14 +80,21 @@ config :ash_harness_tau_bench, :model, "anthropic:claude-sonnet-4-5"
 The headline comes from `mix tau_bench.run` running in replay mode
 against committed cassettes:
 
-- All 3 real scenarios (`change_flight`, `cancel_economy`,
-  `refuse_basic_cancel`) pass end-to-end. The agent reads the
-  current reservation state, mutates (or refuses to mutate) per
-  policy, and `gate :resource_state` confirms the post-run attribute
-  values match the scenario's expectation.
+- `change_flight` — agent reads the customer's reservations, searches
+  for later flights on the route, calls `reservation__change_flight`;
+  `gate :resource_state` confirms `:status == :changed`.
+- `cancel_economy` — agent reads the reservation, calls
+  `reservation__cancel`; gate confirms `:status == :cancelled`.
+- `refuse_basic_cancel` — agent reads the reservation, recognizes the
+  basic-fare policy, and refuses without calling any mutation; gate
+  confirms `:status` remains `:booked`.
 - 7 v0.2 placeholders pass trivially (`agent(nil)` + `gate :invariant
   do true end`) — they exist so the test count stays stable while
   the remaining ~47 upstream τ-bench scenarios are added in v0.2.
+
+Cassettes use `template: [preset: :llm]` so multi-turn replays stay
+stable against fresh Anthropic `toolu_*` / `msg_*` / `req_*` IDs. See
+`.claude/skills/req-cassette-llm/SKILL.md` for the full pattern.
 
 Caveats baked into the v0.1.1 recording:
 

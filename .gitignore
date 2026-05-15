@@ -25,6 +25,9 @@ ash_harness-*.tar
 /tmp/
 /.direnv
 
+# Claude Code harness runtime state.
+.claude/scheduled_tasks.lock
+
 # Editor / OS clutter.
 .DS_Store
 .vscode/

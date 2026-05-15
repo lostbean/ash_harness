@@ -1,7 +1,7 @@
 {
   "interactions": [
     {
-      "recorded_at": "2026-05-14T21:09:46.825332Z",
+      "recorded_at": "2026-05-15T00:54:31.802182Z",
       "request": {
         "body_json": {
           "max_tokens": 64000,
@@ -13,7 +13,7 @@
           ],
           "model": "claude-sonnet-4-5-20250929",
           "stream": false,
-          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** \u2014 An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** \u2014 A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** \u2014 A scheduled flight. (actions: read, search)\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` \u2014 load the full detail for a resource\n  when you need it.\n",
+          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** — An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** — A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** — A scheduled flight. (actions: read, search)\n\n# Traversal\n\n- TauBenchAirline.Customer -[:reservations]-> TauBenchAirline.Reservation\n- TauBenchAirline.Reservation -[:customer]-> TauBenchAirline.Customer\n- TauBenchAirline.Reservation -[:flight]-> TauBenchAirline.Flight\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` — load the full detail for a resource\n  when you need it.\n",
           "tools": [
             {
               "description": "An airline customer. (action: read)",
@@ -68,7 +68,7 @@
               "name": "load_resource_skill"
             },
             {
-              "description": "A booked itinerary tied to a customer. \u2014 Use this when the customer wants to cancel the reservation.",
+              "description": "A booked itinerary tied to a customer. — Use this when the customer wants to cancel the reservation.",
               "input_schema": {
                 "properties": {
                   "id": {
@@ -88,7 +88,7 @@
               "name": "reservation__cancel"
             },
             {
-              "description": "A booked itinerary tied to a customer. \u2014 Use this to move the customer to a different flight.",
+              "description": "A booked itinerary tied to a customer. — Use this to move the customer to a different flight.",
               "input_schema": {
                 "properties": {
                   "flight_id": {
@@ -138,9 +138,6 @@
           ],
           "user-agent": [
             "req/0.5.17"
-          ],
-          "x-api-key": [
-            "sk-ant-cassette-placeholder"
           ]
         },
         "method": "POST",
@@ -151,14 +148,14 @@
         "body_json": {
           "content": [
             {
-              "text": "I'll help you cancel your economy reservation. Let me first check your current reservation details to confirm the booking before proceeding with the cancellation.",
+              "text": "I'll help you cancel your economy reservation. Let me first check your current reservation details to confirm the information before proceeding with the cancellation.",
               "type": "text"
             },
             {
               "caller": {
                 "type": "direct"
               },
-              "id": "toolu_011UUSYQHqiVz3SY2EvuPTWq",
+              "id": "toolu_01MSQHirW7C3sb3JzXer57Ac",
               "input": {},
               "name": "customer__read",
               "type": "tool_use"
@@ -167,13 +164,13 @@
               "caller": {
                 "type": "direct"
               },
-              "id": "toolu_015B7gQd3DThxgr479DVNLz8",
+              "id": "toolu_01BRR9t5JxagN1vkLxqs11tF",
               "input": {},
               "name": "reservation__read",
               "type": "tool_use"
             }
           ],
-          "id": "msg_01FEE1HpoyXyCDm5pMYA965z",
+          "id": "msg_01EKLKqGNwC3SBLcCGZeMrJV",
           "model": "claude-sonnet-4-5-20250929",
           "role": "assistant",
           "stop_details": null,
@@ -188,7 +185,7 @@
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
             "inference_geo": "not_available",
-            "input_tokens": 1372,
+            "input_tokens": 1456,
             "output_tokens": 85,
             "service_tier": "standard"
           }
@@ -196,7 +193,7 @@
         "body_type": "json",
         "headers": {
           "anthropic-organization-id": [
-            "placeholder"
+            "a8b30265-cdb3-4bc6-8798-158fb659a7f5"
           ],
           "anthropic-ratelimit-input-tokens-limit": [
             "2000000"
@@ -205,7 +202,7 @@
             "1999000"
           ],
           "anthropic-ratelimit-input-tokens-reset": [
-            "2026-05-14T21:09:45Z"
+            "2026-05-15T00:54:30Z"
           ],
           "anthropic-ratelimit-output-tokens-limit": [
             "400000"
@@ -214,7 +211,7 @@
             "400000"
           ],
           "anthropic-ratelimit-output-tokens-reset": [
-            "2026-05-14T21:09:46Z"
+            "2026-05-15T00:54:31Z"
           ],
           "anthropic-ratelimit-requests-limit": [
             "20000"
@@ -223,7 +220,7 @@
             "19999"
           ],
           "anthropic-ratelimit-requests-reset": [
-            "2026-05-14T21:09:44Z"
+            "2026-05-15T00:54:29Z"
           ],
           "anthropic-ratelimit-tokens-limit": [
             "2400000"
@@ -232,13 +229,13 @@
             "2399000"
           ],
           "anthropic-ratelimit-tokens-reset": [
-            "2026-05-14T21:09:45Z"
+            "2026-05-15T00:54:30Z"
           ],
           "cf-cache-status": [
             "DYNAMIC"
           ],
           "cf-ray": [
-            "placeholder"
+            "9fbe2bf0790b82fd-GIG"
           ],
           "connection": [
             "keep-alive"
@@ -250,22 +247,22 @@
             "application/json"
           ],
           "date": [
-            "Thu, 14 May 2026 21:09:46 GMT"
+            "Fri, 15 May 2026 00:54:31 GMT"
           ],
           "request-id": [
-            "placeholder"
+            "req_011Cb3Sbqeosrb871qaFSJRt"
           ],
           "server": [
             "cloudflare"
           ],
           "set-cookie": [
-            "_cfuvid=z8AAazrboOJDrEZOAaCv8T85Z_20L0c.MAUChxdVLlY-1778792984.0768309-1.0.1.1-t8tF6IL.JAF4YOsY7dYZ7V7favAJZ0Q6C_YDcYPXWhA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+            "_cfuvid=TZkrfx3J.Er8mqM998EFoBpR8oooIdT5qzKKw.neX14-1778806469.194968-1.0.1.1-Rrpte9dT2npbZDPgRYOPC8_CL3FJ_M72OkDb4qr11.Q; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
           ],
           "strict-transport-security": [
             "max-age=31536000; includeSubDomains; preload"
           ],
           "traceresponse": [
-            "00-2d0fb8778ba851178425d9bad6135b9b-e628551de9df887e-01"
+            "00-274abed980d01915e736b3ec23be42c0-86b893dc4b679bff-01"
           ],
           "transfer-encoding": [
             "chunked"
@@ -274,17 +271,47 @@
             "Accept-Encoding"
           ],
           "x-envoy-upstream-service-time": [
-            "2509"
+            "2381"
           ],
           "x-robots-tag": [
             "none"
           ]
         },
         "status": 200
+      },
+      "template": {
+        "config": {
+          "allow_key_templates": false,
+          "debug": false
+        },
+        "enabled": true,
+        "patterns": {
+          "anthropic_request_id": {
+            "opts": [],
+            "source": "req_[a-zA-Z0-9]+"
+          },
+          "call_id": {
+            "opts": [],
+            "source": "call_[a-zA-Z0-9]+"
+          },
+          "chatcmpl_id": {
+            "opts": [],
+            "source": "chatcmpl-[a-zA-Z0-9]+"
+          },
+          "msg_id": {
+            "opts": [],
+            "source": "msg_[a-zA-Z0-9]+"
+          },
+          "toolu_id": {
+            "opts": [],
+            "source": "toolu_[a-zA-Z0-9]+"
+          }
+        },
+        "recorded_values": {}
       }
     },
     {
-      "recorded_at": "2026-05-14T21:09:50.775757Z",
+      "recorded_at": "2026-05-15T00:54:34.527472Z",
       "request": {
         "body_json": {
           "max_tokens": 64000,
@@ -296,17 +323,17 @@
             {
               "content": [
                 {
-                  "text": "I'll help you cancel your economy reservation. Let me first check your current reservation details to confirm the booking before proceeding with the cancellation.",
+                  "text": "I'll help you cancel your economy reservation. Let me first check your current reservation details to confirm the information before proceeding with the cancellation.",
                   "type": "text"
                 },
                 {
-                  "id": "toolu_011UUSYQHqiVz3SY2EvuPTWq",
+                  "id": "{{toolu_id.0}}",
                   "input": {},
                   "name": "customer__read",
                   "type": "tool_use"
                 },
                 {
-                  "id": "toolu_015B7gQd3DThxgr479DVNLz8",
+                  "id": "{{toolu_id.1}}",
                   "input": {},
                   "name": "reservation__read",
                   "type": "tool_use"
@@ -318,12 +345,12 @@
               "content": [
                 {
                   "content": "{\"count\":3,\"records\":[{\"id\":\"37143f8d-7e90-524f-beca-f731f9a35cbc\",\"name\":\"Alice Smith\",\"email\":\"alice@example.com\",\"loyalty_tier\":\"gold\"},{\"id\":\"48118eab-3c1c-5327-b585-0cfd4f7322fe\",\"name\":\"Carol Park\",\"email\":\"carol@example.com\",\"loyalty_tier\":\"basic\"},{\"id\":\"8fa3b548-8d47-5c78-9c9f-b0bf8db50379\",\"name\":\"Bob Jones\",\"email\":\"bob@example.com\",\"loyalty_tier\":\"silver\"}]}",
-                  "tool_use_id": "toolu_011UUSYQHqiVz3SY2EvuPTWq",
+                  "tool_use_id": "{{toolu_id.0}}",
                   "type": "tool_result"
                 },
                 {
                   "content": "{\"count\":3,\"records\":[{\"id\":\"1b1651ef-738f-5465-a05b-6feeea06882d\",\"status\":\"booked\",\"customer_id\":\"48118eab-3c1c-5327-b585-0cfd4f7322fe\",\"fare_class\":\"basic\",\"flight_id\":\"697a24a1-45b8-5712-976e-90e972278cfb\",\"purchase_date\":\"2026-05-03T12:00:00.000000Z\",\"ticket_price\":\"199.00\"},{\"id\":\"6b6248ec-1c1d-5d92-918d-529e8195ee30\",\"status\":\"booked\",\"customer_id\":\"8fa3b548-8d47-5c78-9c9f-b0bf8db50379\",\"fare_class\":\"economy\",\"flight_id\":\"5deb1da7-727c-5802-b06f-ca65c2a2d041\",\"purchase_date\":\"2026-05-02T11:00:00.000000Z\",\"ticket_price\":\"319.00\"},{\"id\":\"b713f93e-520c-5b25-a623-fe969e410483\",\"status\":\"booked\",\"customer_id\":\"37143f8d-7e90-524f-beca-f731f9a35cbc\",\"fare_class\":\"premium\",\"flight_id\":\"747d5cec-4c94-5a53-93df-db6933dea6db\",\"purchase_date\":\"2026-05-01T10:00:00.000000Z\",\"ticket_price\":\"499.00\"}]}",
-                  "tool_use_id": "toolu_015B7gQd3DThxgr479DVNLz8",
+                  "tool_use_id": "{{toolu_id.1}}",
                   "type": "tool_result"
                 }
               ],
@@ -332,7 +359,7 @@
           ],
           "model": "claude-sonnet-4-5-20250929",
           "stream": false,
-          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** \u2014 An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** \u2014 A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** \u2014 A scheduled flight. (actions: read, search)\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` \u2014 load the full detail for a resource\n  when you need it.\n",
+          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** — An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** — A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** — A scheduled flight. (actions: read, search)\n\n# Traversal\n\n- TauBenchAirline.Customer -[:reservations]-> TauBenchAirline.Reservation\n- TauBenchAirline.Reservation -[:customer]-> TauBenchAirline.Customer\n- TauBenchAirline.Reservation -[:flight]-> TauBenchAirline.Flight\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` — load the full detail for a resource\n  when you need it.\n",
           "tools": [
             {
               "description": "An airline customer. (action: read)",
@@ -387,7 +414,7 @@
               "name": "load_resource_skill"
             },
             {
-              "description": "A booked itinerary tied to a customer. \u2014 Use this when the customer wants to cancel the reservation.",
+              "description": "A booked itinerary tied to a customer. — Use this when the customer wants to cancel the reservation.",
               "input_schema": {
                 "properties": {
                   "id": {
@@ -407,7 +434,7 @@
               "name": "reservation__cancel"
             },
             {
-              "description": "A booked itinerary tied to a customer. \u2014 Use this to move the customer to a different flight.",
+              "description": "A booked itinerary tied to a customer. — Use this to move the customer to a different flight.",
               "input_schema": {
                 "properties": {
                   "flight_id": {
@@ -457,9 +484,6 @@
           ],
           "user-agent": [
             "req/0.5.17"
-          ],
-          "x-api-key": [
-            "sk-ant-cassette-placeholder"
           ]
         },
         "method": "POST",
@@ -470,23 +494,23 @@
         "body_json": {
           "content": [
             {
-              "text": "I can see there is one economy reservation in the system:\n- **Reservation ID**: 6b6248ec-1c1d-5d92-918d-529e8195ee30\n- **Customer**: Bob Jones\n- **Fare Class**: Economy\n- **Status**: Booked\n- **Ticket Price**: $319.00\n\nI'll now proceed to cancel this reservation with the reason you provided.",
+              "text": "I can see you have an economy reservation (ID: 6b6248ec-1c1d-5d92-918d-529e8195ee30) with a ticket price of $319.00. I'll proceed to cancel this reservation now due to your changed travel plans.",
               "type": "text"
             },
             {
               "caller": {
                 "type": "direct"
               },
-              "id": "toolu_014aNwuYdpjywZDdobVAoe62",
+              "id": "toolu_01UmfGnBZs9VxpfNb61jkkUm",
               "input": {
                 "id": "6b6248ec-1c1d-5d92-918d-529e8195ee30",
-                "reasoning": "Plans changed and customer can no longer travel"
+                "reasoning": "Customer's plans changed and can no longer travel"
               },
               "name": "reservation__cancel",
               "type": "tool_use"
             }
           ],
-          "id": "msg_01Cuf71zomrBQEMxdTnbXNgR",
+          "id": "msg_015xpDAtQEWwzzw3Gf9J8DQd",
           "model": "claude-sonnet-4-5-20250929",
           "role": "assistant",
           "stop_details": null,
@@ -501,15 +525,15 @@
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
             "inference_geo": "not_available",
-            "input_tokens": 2056,
-            "output_tokens": 194,
+            "input_tokens": 2140,
+            "output_tokens": 164,
             "service_tier": "standard"
           }
         },
         "body_type": "json",
         "headers": {
           "anthropic-organization-id": [
-            "placeholder"
+            "a8b30265-cdb3-4bc6-8798-158fb659a7f5"
           ],
           "anthropic-ratelimit-input-tokens-limit": [
             "2000000"
@@ -518,7 +542,7 @@
             "1999000"
           ],
           "anthropic-ratelimit-input-tokens-reset": [
-            "2026-05-14T21:09:48Z"
+            "2026-05-15T00:54:32Z"
           ],
           "anthropic-ratelimit-output-tokens-limit": [
             "400000"
@@ -527,7 +551,7 @@
             "400000"
           ],
           "anthropic-ratelimit-output-tokens-reset": [
-            "2026-05-14T21:09:50Z"
+            "2026-05-15T00:54:34Z"
           ],
           "anthropic-ratelimit-requests-limit": [
             "20000"
@@ -536,7 +560,7 @@
             "19999"
           ],
           "anthropic-ratelimit-requests-reset": [
-            "2026-05-14T21:09:47Z"
+            "2026-05-15T00:54:31Z"
           ],
           "anthropic-ratelimit-tokens-limit": [
             "2400000"
@@ -545,13 +569,13 @@
             "2399000"
           ],
           "anthropic-ratelimit-tokens-reset": [
-            "2026-05-14T21:09:48Z"
+            "2026-05-15T00:54:32Z"
           ],
           "cf-cache-status": [
             "DYNAMIC"
           ],
           "cf-ray": [
-            "placeholder"
+            "9fbe2c00e9bd82fd-GIG"
           ],
           "connection": [
             "keep-alive"
@@ -563,22 +587,22 @@
             "application/json"
           ],
           "date": [
-            "Thu, 14 May 2026 21:09:50 GMT"
+            "Fri, 15 May 2026 00:54:34 GMT"
           ],
           "request-id": [
-            "placeholder"
+            "req_011Cb3Sc2tz6MDBY6h8V4Tyx"
           ],
           "server": [
             "cloudflare"
           ],
           "set-cookie": [
-            "_cfuvid=lhxkw30mdfP1S0Q0eJrz6IR3W9umNdL_I8SIeSk9.ew-1778792986.8546245-1.0.1.1-S_e5Ab0VPevQycFV4aUjL_a_pgngOTZ_yDBeqhx6fDA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+            "_cfuvid=FJkoGNfgHgynC1VoX_7r7q8EZ1LR_Kgf3mjOBCvP8jw-1778806471.8257172-1.0.1.1-mskjj2D.GMRgJ..Sgg2km.Nh_2ByepVr98TlS0X7Amg; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
           ],
           "strict-transport-security": [
             "max-age=31536000; includeSubDomains; preload"
           ],
           "traceresponse": [
-            "00-2f90582321836048079ae66b02ce5e97-907b186812a1447e-01"
+            "00-46729704c229222b0a3e5cd0d80aa231-73ccf9d889ff01ab-01"
           ],
           "transfer-encoding": [
             "chunked"
@@ -587,17 +611,52 @@
             "Accept-Encoding"
           ],
           "x-envoy-upstream-service-time": [
-            "3760"
+            "2516"
           ],
           "x-robots-tag": [
             "none"
           ]
         },
         "status": 200
+      },
+      "template": {
+        "config": {
+          "allow_key_templates": false,
+          "debug": false
+        },
+        "enabled": true,
+        "patterns": {
+          "anthropic_request_id": {
+            "opts": [],
+            "source": "req_[a-zA-Z0-9]+"
+          },
+          "call_id": {
+            "opts": [],
+            "source": "call_[a-zA-Z0-9]+"
+          },
+          "chatcmpl_id": {
+            "opts": [],
+            "source": "chatcmpl-[a-zA-Z0-9]+"
+          },
+          "msg_id": {
+            "opts": [],
+            "source": "msg_[a-zA-Z0-9]+"
+          },
+          "toolu_id": {
+            "opts": [],
+            "source": "toolu_[a-zA-Z0-9]+"
+          }
+        },
+        "recorded_values": {
+          "toolu_id": [
+            "toolu_01MSQHirW7C3sb3JzXer57Ac",
+            "toolu_01BRR9t5JxagN1vkLxqs11tF"
+          ]
+        }
       }
     },
     {
-      "recorded_at": "2026-05-14T21:09:54.690201Z",
+      "recorded_at": "2026-05-15T00:54:38.221697Z",
       "request": {
         "body_json": {
           "max_tokens": 64000,
@@ -609,17 +668,17 @@
             {
               "content": [
                 {
-                  "text": "I'll help you cancel your economy reservation. Let me first check your current reservation details to confirm the booking before proceeding with the cancellation.",
+                  "text": "I'll help you cancel your economy reservation. Let me first check your current reservation details to confirm the information before proceeding with the cancellation.",
                   "type": "text"
                 },
                 {
-                  "id": "toolu_011UUSYQHqiVz3SY2EvuPTWq",
+                  "id": "{{toolu_id.0}}",
                   "input": {},
                   "name": "customer__read",
                   "type": "tool_use"
                 },
                 {
-                  "id": "toolu_015B7gQd3DThxgr479DVNLz8",
+                  "id": "{{toolu_id.1}}",
                   "input": {},
                   "name": "reservation__read",
                   "type": "tool_use"
@@ -631,12 +690,12 @@
               "content": [
                 {
                   "content": "{\"count\":3,\"records\":[{\"id\":\"37143f8d-7e90-524f-beca-f731f9a35cbc\",\"name\":\"Alice Smith\",\"email\":\"alice@example.com\",\"loyalty_tier\":\"gold\"},{\"id\":\"48118eab-3c1c-5327-b585-0cfd4f7322fe\",\"name\":\"Carol Park\",\"email\":\"carol@example.com\",\"loyalty_tier\":\"basic\"},{\"id\":\"8fa3b548-8d47-5c78-9c9f-b0bf8db50379\",\"name\":\"Bob Jones\",\"email\":\"bob@example.com\",\"loyalty_tier\":\"silver\"}]}",
-                  "tool_use_id": "toolu_011UUSYQHqiVz3SY2EvuPTWq",
+                  "tool_use_id": "{{toolu_id.0}}",
                   "type": "tool_result"
                 },
                 {
                   "content": "{\"count\":3,\"records\":[{\"id\":\"1b1651ef-738f-5465-a05b-6feeea06882d\",\"status\":\"booked\",\"customer_id\":\"48118eab-3c1c-5327-b585-0cfd4f7322fe\",\"fare_class\":\"basic\",\"flight_id\":\"697a24a1-45b8-5712-976e-90e972278cfb\",\"purchase_date\":\"2026-05-03T12:00:00.000000Z\",\"ticket_price\":\"199.00\"},{\"id\":\"6b6248ec-1c1d-5d92-918d-529e8195ee30\",\"status\":\"booked\",\"customer_id\":\"8fa3b548-8d47-5c78-9c9f-b0bf8db50379\",\"fare_class\":\"economy\",\"flight_id\":\"5deb1da7-727c-5802-b06f-ca65c2a2d041\",\"purchase_date\":\"2026-05-02T11:00:00.000000Z\",\"ticket_price\":\"319.00\"},{\"id\":\"b713f93e-520c-5b25-a623-fe969e410483\",\"status\":\"booked\",\"customer_id\":\"37143f8d-7e90-524f-beca-f731f9a35cbc\",\"fare_class\":\"premium\",\"flight_id\":\"747d5cec-4c94-5a53-93df-db6933dea6db\",\"purchase_date\":\"2026-05-01T10:00:00.000000Z\",\"ticket_price\":\"499.00\"}]}",
-                  "tool_use_id": "toolu_015B7gQd3DThxgr479DVNLz8",
+                  "tool_use_id": "{{toolu_id.1}}",
                   "type": "tool_result"
                 }
               ],
@@ -645,14 +704,14 @@
             {
               "content": [
                 {
-                  "text": "I can see there is one economy reservation in the system:\n- **Reservation ID**: 6b6248ec-1c1d-5d92-918d-529e8195ee30\n- **Customer**: Bob Jones\n- **Fare Class**: Economy\n- **Status**: Booked\n- **Ticket Price**: $319.00\n\nI'll now proceed to cancel this reservation with the reason you provided.",
+                  "text": "I can see you have an economy reservation (ID: 6b6248ec-1c1d-5d92-918d-529e8195ee30) with a ticket price of $319.00. I'll proceed to cancel this reservation now due to your changed travel plans.",
                   "type": "text"
                 },
                 {
-                  "id": "toolu_014aNwuYdpjywZDdobVAoe62",
+                  "id": "{{toolu_id.4}}",
                   "input": {
                     "id": "6b6248ec-1c1d-5d92-918d-529e8195ee30",
-                    "reasoning": "Plans changed and customer can no longer travel"
+                    "reasoning": "Customer's plans changed and can no longer travel"
                   },
                   "name": "reservation__cancel",
                   "type": "tool_use"
@@ -664,7 +723,7 @@
               "content": [
                 {
                   "content": "{\"record\":{\"id\":\"6b6248ec-1c1d-5d92-918d-529e8195ee30\",\"status\":\"cancelled\",\"customer_id\":\"8fa3b548-8d47-5c78-9c9f-b0bf8db50379\",\"fare_class\":\"economy\",\"flight_id\":\"5deb1da7-727c-5802-b06f-ca65c2a2d041\",\"purchase_date\":\"2026-05-02T11:00:00.000000Z\",\"ticket_price\":\"319.00\"}}",
-                  "tool_use_id": "toolu_014aNwuYdpjywZDdobVAoe62",
+                  "tool_use_id": "{{toolu_id.4}}",
                   "type": "tool_result"
                 }
               ],
@@ -673,7 +732,7 @@
           ],
           "model": "claude-sonnet-4-5-20250929",
           "stream": false,
-          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** \u2014 An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** \u2014 A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** \u2014 A scheduled flight. (actions: read, search)\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` \u2014 load the full detail for a resource\n  when you need it.\n",
+          "system": "# Identity\n\nName: AirlineSupport\nDescription: Helps customers manage reservations, search flights, and apply policy.\n\n# Vocabulary\n\n- **reservation**: A booked itinerary tied to a customer.\n- **fare_class**: The class of fare on a reservation (basic/economy/premium/business).\n- **loyalty_tier**: The customer's frequent-flyer tier.\n\n# Resources\n\n- **TauBenchAirline.Customer** — An airline customer. (actions: read)\n- **TauBenchAirline.Reservation** — A booked itinerary tied to a customer. (actions: read, change_flight, cancel)\n- **TauBenchAirline.Flight** — A scheduled flight. (actions: read, search)\n\n# Traversal\n\n- TauBenchAirline.Customer -[:reservations]-> TauBenchAirline.Reservation\n- TauBenchAirline.Reservation -[:customer]-> TauBenchAirline.Customer\n- TauBenchAirline.Reservation -[:flight]-> TauBenchAirline.Flight\n\n# Strategies\n\n- **read_before_write**: Always confirm the customer's current reservation state before mutating.\n- **respect_fare_policy**: Basic fare reservations cannot be cancelled; offer a paid change instead.\n\n# Operating Limits\n\n- At most 3 successful mutations per turn.\n- Max context tokens: 128000.\n- Repair-loop retries per action: 2.\n\n# Meta-tools\n\n- `load_resource_skill(resource_name)` — load the full detail for a resource\n  when you need it.\n",
           "tools": [
             {
               "description": "An airline customer. (action: read)",
@@ -728,7 +787,7 @@
               "name": "load_resource_skill"
             },
             {
-              "description": "A booked itinerary tied to a customer. \u2014 Use this when the customer wants to cancel the reservation.",
+              "description": "A booked itinerary tied to a customer. — Use this when the customer wants to cancel the reservation.",
               "input_schema": {
                 "properties": {
                   "id": {
@@ -748,7 +807,7 @@
               "name": "reservation__cancel"
             },
             {
-              "description": "A booked itinerary tied to a customer. \u2014 Use this to move the customer to a different flight.",
+              "description": "A booked itinerary tied to a customer. — Use this to move the customer to a different flight.",
               "input_schema": {
                 "properties": {
                   "flight_id": {
@@ -798,9 +857,6 @@
           ],
           "user-agent": [
             "req/0.5.17"
-          ],
-          "x-api-key": [
-            "sk-ant-cassette-placeholder"
           ]
         },
         "method": "POST",
@@ -811,11 +867,11 @@
         "body_json": {
           "content": [
             {
-              "text": "Perfect! Your economy reservation has been successfully cancelled. \n\n**Cancellation Summary:**\n- **Reservation ID**: 6b6248ec-1c1d-5d92-918d-529e8195ee30\n- **Status**: Cancelled\n- **Original Ticket Price**: $319.00\n- **Reason**: Plans changed and customer can no longer travel\n\nThe cancellation is complete. Depending on your fare rules and our refund policy, you may be eligible for a refund or travel credit. You should receive a confirmation email shortly with additional details about any refund processing.\n\nIs there anything else I can help you with?",
+              "text": "Perfect! Your economy reservation has been successfully cancelled. \n\n**Cancellation Summary:**\n- **Reservation ID:** 6b6248ec-1c1d-5d92-918d-529e8195ee30\n- **Status:** Cancelled\n- **Fare Class:** Economy\n- **Original Ticket Price:** $319.00\n- **Reason:** Plans changed and unable to travel\n\nYour reservation is now cancelled. Depending on the airline's refund policy for economy fares, you may be eligible for a refund or travel credit. You should receive a confirmation email shortly with details about any refund processing.",
               "type": "text"
             }
           ],
-          "id": "msg_01S5gteR7AnjSCeUBryXSmtW",
+          "id": "msg_01VS8J84aa9z2UgCzVJnTP87",
           "model": "claude-sonnet-4-5-20250929",
           "role": "assistant",
           "stop_details": null,
@@ -830,15 +886,15 @@
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
             "inference_geo": "not_available",
-            "input_tokens": 2393,
-            "output_tokens": 144,
+            "input_tokens": 2447,
+            "output_tokens": 140,
             "service_tier": "standard"
           }
         },
         "body_type": "json",
         "headers": {
           "anthropic-organization-id": [
-            "placeholder"
+            "a8b30265-cdb3-4bc6-8798-158fb659a7f5"
           ],
           "anthropic-ratelimit-input-tokens-limit": [
             "2000000"
@@ -847,7 +903,7 @@
             "1999000"
           ],
           "anthropic-ratelimit-input-tokens-reset": [
-            "2026-05-14T21:09:52Z"
+            "2026-05-15T00:54:35Z"
           ],
           "anthropic-ratelimit-output-tokens-limit": [
             "400000"
@@ -856,7 +912,7 @@
             "400000"
           ],
           "anthropic-ratelimit-output-tokens-reset": [
-            "2026-05-14T21:09:54Z"
+            "2026-05-15T00:54:38Z"
           ],
           "anthropic-ratelimit-requests-limit": [
             "20000"
@@ -865,7 +921,7 @@
             "19999"
           ],
           "anthropic-ratelimit-requests-reset": [
-            "2026-05-14T21:09:51Z"
+            "2026-05-15T00:54:34Z"
           ],
           "anthropic-ratelimit-tokens-limit": [
             "2400000"
@@ -874,13 +930,13 @@
             "2399000"
           ],
           "anthropic-ratelimit-tokens-reset": [
-            "2026-05-14T21:09:52Z"
+            "2026-05-15T00:54:35Z"
           ],
           "cf-cache-status": [
             "DYNAMIC"
           ],
           "cf-ray": [
-            "placeholder"
+            "9fbe2c11facc82fd-GIG"
           ],
           "connection": [
             "keep-alive"
@@ -892,22 +948,22 @@
             "application/json"
           ],
           "date": [
-            "Thu, 14 May 2026 21:09:54 GMT"
+            "Fri, 15 May 2026 00:54:38 GMT"
           ],
           "request-id": [
-            "placeholder"
+            "req_011Cb3ScEawtfbaUjWEgLKDG"
           ],
           "server": [
             "cloudflare"
           ],
           "set-cookie": [
-            "_cfuvid=A3KYh8lIvAaSh_JSlCSezy9Hp2UMELc4QqUz10esOtU-1778792990.8048077-1.0.1.1-mAk8qamsBuYOePobO1f6L5eC3XtPd7yrDhI5yUybt5Y; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+            "_cfuvid=4tB0p8zSWPRq802PB9RYIAK3xio8rSETn.BoODVVMdw-1778806474.5558486-1.0.1.1-bGov_a8Qbfr5.6s2.8hdlRJS5TcEL7cSCvTvJuYSIM8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
           ],
           "strict-transport-security": [
             "max-age=31536000; includeSubDomains; preload"
           ],
           "traceresponse": [
-            "00-b765b5ef2d3e14fec166ceacf9941642-0b1bc70c95f63836-01"
+            "00-d4f73fbe1acf52c61bb012705c941ea8-e9dc2a4507ed79aa-01"
           ],
           "transfer-encoding": [
             "chunked"
@@ -916,13 +972,49 @@
             "Accept-Encoding"
           ],
           "x-envoy-upstream-service-time": [
-            "3720"
+            "3499"
           ],
           "x-robots-tag": [
             "none"
           ]
         },
         "status": 200
+      },
+      "template": {
+        "config": {
+          "allow_key_templates": false,
+          "debug": false
+        },
+        "enabled": true,
+        "patterns": {
+          "anthropic_request_id": {
+            "opts": [],
+            "source": "req_[a-zA-Z0-9]+"
+          },
+          "call_id": {
+            "opts": [],
+            "source": "call_[a-zA-Z0-9]+"
+          },
+          "chatcmpl_id": {
+            "opts": [],
+            "source": "chatcmpl-[a-zA-Z0-9]+"
+          },
+          "msg_id": {
+            "opts": [],
+            "source": "msg_[a-zA-Z0-9]+"
+          },
+          "toolu_id": {
+            "opts": [],
+            "source": "toolu_[a-zA-Z0-9]+"
+          }
+        },
+        "recorded_values": {
+          "toolu_id": [
+            "toolu_01MSQHirW7C3sb3JzXer57Ac",
+            "toolu_01BRR9t5JxagN1vkLxqs11tF",
+            "toolu_01UmfGnBZs9VxpfNb61jkkUm"
+          ]
+        }
       }
     }
   ],

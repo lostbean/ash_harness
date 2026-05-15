@@ -92,7 +92,8 @@ defmodule AshHarness.Reachability do
   end
 
   defp relationships(resource) do
-    if function_exported?(Ash.Resource.Info, :relationships, 1) do
+    if Code.ensure_loaded?(Ash.Resource.Info) and
+         function_exported?(Ash.Resource.Info, :relationships, 1) do
       Ash.Resource.Info.relationships(resource)
     else
       []

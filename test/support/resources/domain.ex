@@ -17,5 +17,6 @@ defmodule AshHarness.Test.Domain do
     resource(AshHarness.Test.Member)
     resource(AshHarness.Test.Order)
     resource(AshHarness.Test.Restricted)
+    resource(AshHarness.Test.Alt.Ticket)
   end
 end

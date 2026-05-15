@@ -157,6 +157,35 @@ defmodule AshHarness.Eval.Runner do
     Enum.map(module.scenarios(), &run(&1, Keyword.put_new(opts, :cassette_module, module)))
   end
 
+  @doc """
+  ReqCassette `:filter_request` callback. Applied during both recording and
+  replay matching, so anything we normalize here gets normalized symmetrically.
+
+  Sorts every JSON-schema `"required"` array alphabetically — Ash/Jido tool
+  schemas come out non-deterministically ordered, which would otherwise
+  break body matching on replay even when the semantic content is identical.
+  """
+  @spec cassette_normalize_request(map()) :: map()
+  def cassette_normalize_request(request) do
+    update_in(request, ["body_json"], &normalize_required_fields/1)
+  end
+
+  defp normalize_required_fields(%{"required" => required} = node) when is_list(required) do
+    node
+    |> Map.put("required", Enum.sort(required))
+    |> Enum.into(%{}, fn {k, v} -> {k, normalize_required_fields(v)} end)
+  end
+
+  defp normalize_required_fields(%{} = node) do
+    Enum.into(node, %{}, fn {k, v} -> {k, normalize_required_fields(v)} end)
+  end
+
+  defp normalize_required_fields(list) when is_list(list) do
+    Enum.map(list, &normalize_required_fields/1)
+  end
+
+  defp normalize_required_fields(other), do: other
+
   # ----------------------------------------------------------------
   # Internal
   # ----------------------------------------------------------------
@@ -179,7 +208,10 @@ defmodule AshHarness.Eval.Runner do
 
     cassette_opts = [
       mode: cassette_mode,
-      dir: Path.dirname(cassette_path)
+      cassette_dir: Path.dirname(cassette_path),
+      template: [preset: :llm],
+      filter_request_headers: ["authorization", "x-api-key", "cookie"],
+      filter_request: &__MODULE__.cassette_normalize_request/1
     ]
 
     cassette_name = Path.basename(cassette_path, ".json")
@@ -297,8 +329,6 @@ defmodule AshHarness.Eval.Runner do
         end
     end
   end
-
-  defp request_payload_data(_request, _agent_module), do: %{}
 
   defp lookup_tool(agent_module, tool_name)
        when is_atom(agent_module) and not is_nil(agent_module) and is_binary(tool_name) do
