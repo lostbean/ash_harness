@@ -57,7 +57,12 @@ jobs:
       # service. `mix test --only postgres` exits 1 when zero tests match
       # (Mix design), so capture output and tolerate that one case.
       - name: Compile against postgres env
-        run: MIX_ENV=postgres mix compile --warnings-as-errors
+        # Plain `mix compile` (not --warnings-as-errors). The :postgres
+        # env triggers dev-only optional deps (Igniter, Owl) and excludes
+        # :test-only ones (Plug for LLMStub), so warnings-as-errors here
+        # would only fire on those benign edges. The :test job runs
+        # warnings-as-errors and is the gate.
+        run: MIX_ENV=postgres mix compile
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PASSWORD: postgres
