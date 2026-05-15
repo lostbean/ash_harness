@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="ash_harness_banner.png" alt="AshHarness — turn Ash Framework resources into the operating layer for AI agents driven by jido_composer." />
+</p>
+
 # AshHarness
 
 Turn Ash Framework resources into the operating layer for AI agents
