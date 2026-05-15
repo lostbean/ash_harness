@@ -128,10 +128,8 @@ When implementing extensions (`AshHarness.Resource`, `AshHarness.Domain`,
 
 ## Build, test, lint commands
 
-The dependency list in `design/implementation/phases.md` (Phase 0) shows
-what `mix.exs` should become; the current `mix.exs` is empty scaffold.
-
-Once deps are wired:
+`mix.exs` is fully populated at v0.1.2 (see `design/implementation/phases.md`
+Phase 0 for the dep rationale). Standard commands:
 
 ```
 mix deps.get

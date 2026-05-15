@@ -52,11 +52,15 @@ AshHarness.Agent.Info.tool_list(agent)                    :: [{module(), atom(),
 ## Reachability
 
 ```elixir
-AshHarness.Reachability.build(agent)                      :: graph()
+AshHarness.Reachability.build(dsl_state)                  :: graph()
 AshHarness.Reachability.edges_from(graph, source)         :: [edge()]
 AshHarness.Reachability.reachable_from(graph, source)     :: [module()]
 AshHarness.Reachability.edge_to?(graph, source, dest)     :: boolean()
 ```
+
+> Note: `build/1` takes a Spark DSL state (compile-time use only). The
+> runtime-friendly `build(agent_module)` overload originally sketched in
+> the design is deferred to v0.2 (open question Q#10).
 
 ## Context rendering
 
