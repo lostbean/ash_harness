@@ -4,8 +4,8 @@
 
 ### Requirement: Compile-time Jido.Action emission
 
-For each `(resource, action)` pair in an agent's scope, the library
-SHALL emit a `Jido.Action` module at compile time. The emitted module
+The library SHALL emit a `Jido.Action` module at compile time for each
+`(resource, action)` pair in an agent's scope. The emitted module
 SHALL declare the canonical schema as its `schema:` and SHALL implement
 `run/2` by delegating to
 `AshHarness.Harness.GeneratedAction.dispatch/5` with the resource

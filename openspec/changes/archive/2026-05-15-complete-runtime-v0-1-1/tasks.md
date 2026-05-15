@@ -180,11 +180,12 @@
 - [x] 8.1 Rewrite `benchmarks/tau_bench_airline/lib/tau_bench_airline/scenarios.ex`
   for `change_flight`, `cancel_economy`, `refuse_basic_cancel` with
   real `gate :resource_state` assertions per the spec delta.
-- [~] 8.2 Cassette directory wired and gitkeeped; recording against a
-  live LLM is deferred to a follow-up — `ASH_HARNESS_CASSETTE_MODE=record`
-  with a real `ANTHROPIC_API_KEY` produces the JSON files. CI runs in
-  replay mode; missing cassettes surface as `terminated_reason:
-  {:error, ...}` results so failures are reproducible.
+- [x] 8.2 Cassettes recorded for all 3 real scenarios (`change_flight`,
+  `cancel_economy`, `refuse_basic_cancel`) under
+  `benchmarks/tau_bench_airline/test/cassettes/tau_bench_airline_scenarios/`.
+  Uses `template: [preset: :llm]` so multi-turn replays are byte-stable
+  against fresh Anthropic `toolu_*` / `msg_*` / `req_*` IDs. See
+  `.claude/skills/req-cassette-llm/SKILL.md` for the full pattern.
 - [x] 8.3 Remaining 7 scenarios are v0.2 placeholders with `agent(nil)`
   in the scenarios module; README documents the count.
 - [x] 8.4 Update `benchmarks/tau_bench_airline/README.md` Results
@@ -206,9 +207,9 @@
   builders).
 - [x] 9.5 `mix dialyzer` clean (first real run; 3 documented skips
   in `.dialyzer_ignore.exs`).
-- [x] 9.6 `mix tau_bench.run` in replay mode reports a real
-  gate-pass-rate (70 % — 7/10, with the 3 real scenarios pending
-  cassette recording). README updated.
+- [x] 9.6 `mix tau_bench.run` in replay mode reports 100% gate-pass-rate
+  (10/10 — 3 real cassette-driven scenarios + 7 v0.2 placeholders).
+  README updated.
 - [x] 9.7 Bump version to `0.1.1` in `mix.exs`.
 - [x] 9.8 Update `CHANGELOG.md` with the v0.1.1 entry summarizing the
   behavior tightenings (D1-D6 in design.md).

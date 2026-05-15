@@ -96,9 +96,9 @@ and `[:ash_harness, :eval, :scenario, :stop]`, plus
 
 ### Requirement: OpenTelemetry attribute attachment
 
-When emitting AshHarness events during a Jido orchestrator tool call,
-the harness SHALL attach attributes to the active OTel span using the
-namespace `ash_harness.*`. Attributes SHALL include
+The harness SHALL attach attributes to the active OpenTelemetry span
+under the `ash_harness.*` namespace when emitting events inside a
+Jido orchestrator tool call. Attributes SHALL include
 `ash_harness.agent`, `ash_harness.resource`, `ash_harness.action`,
 `ash_harness.scope.passed`, `ash_harness.policy.passed`,
 `ash_harness.budget.count`, `ash_harness.budget.max`,
