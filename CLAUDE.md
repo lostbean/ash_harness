@@ -147,8 +147,11 @@ Phase-8 CI plan (per `design/implementation/test-strategy.md`) adds:
 MIX_ENV=postgres mix test       # postgres-tagged tests (Docker required)
 MIX_ENV=integration mix test    # real LLM; nightly only, requires API key
 mix credo --strict
-mix dialyzer
 ```
+
+Type checking is handled by Elixir 1.20's built-in set-theoretic type
+checker, which runs during `mix compile`. The `compile --warnings-as-errors`
+step in `mix qa` and CI is the type-check gate (it replaced Dialyzer).
 
 For LLM-mocked tests use `Jido.Composer.LLMStub`; integration tests are
 gated with `@tag :integration`.

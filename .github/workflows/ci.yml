@@ -24,7 +24,13 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
       - run: mix deps.get
       - run: mix format --check-formatted
-      - run: mix compile --warnings-as-errors
+      # Type-check gate. Replaces the former Dialyzer pass: Elixir 1.20's
+      # built-in set-theoretic type checker runs during compilation, so a
+      # forced warnings-as-errors compile is the type gate. `--force`
+      # recompiles every module even on a deps/_build cache hit, so the
+      # checker re-examines the whole tree.
+      - name: Type-check (compile --warnings-as-errors)
+        run: mix compile --warnings-as-errors --force
       - run: mix test
       - run: mix credo --strict
 

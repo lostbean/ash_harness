@@ -5,7 +5,7 @@ defmodule AshHarness.MixProject do
   @source_url "https://github.com/ash-project/ash_harness"
 
   def cli do
-    [preferred_envs: [qa: :test, "qa.full": :test, bench: :dev]]
+    [preferred_envs: [qa: :test, bench: :dev]]
   end
 
   def project do
@@ -19,7 +19,6 @@ defmodule AshHarness.MixProject do
       description: description(),
       package: package(),
       docs: docs(),
-      dialyzer: dialyzer(),
       aliases: aliases(),
       name: "AshHarness",
       source_url: @source_url
@@ -27,7 +26,9 @@ defmodule AshHarness.MixProject do
   end
 
   # `mix qa` runs the four fast quality gates in order, fail-fast.
-  # Dialyzer is opt-in via `mix qa.full` because its PLT build is slow.
+  # The `compile --warnings-as-errors` step is the type-check gate:
+  # Elixir 1.20's built-in set-theoretic type checker runs during
+  # compilation, replacing the former Dialyzer pass.
   # `mix bench` runs the τ-bench airline replay (a capability smoke
   # check, separate from code quality).
   defp aliases do
@@ -38,7 +39,6 @@ defmodule AshHarness.MixProject do
         "test",
         "credo --strict"
       ],
-      "qa.full": ["qa", "dialyzer"],
       bench: [&run_tau_bench/1]
     ]
   end
@@ -52,14 +52,6 @@ defmodule AshHarness.MixProject do
       )
 
     if status != 0, do: Mix.raise("mix tau_bench.run exited with status #{status}")
-  end
-
-  defp dialyzer do
-    [
-      plt_add_apps: [:mix, :ex_unit],
-      ignore_warnings: ".dialyzer_ignore.exs",
-      flags: [:error_handling, :missing_return, :extra_return]
-    ]
   end
 
   def application do
@@ -85,8 +77,7 @@ defmodule AshHarness.MixProject do
       {:simple_sat, "~> 0.1", only: [:dev, :test]},
       {:req_cassette, "~> 0.6", only: [:dev, :test]},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 
