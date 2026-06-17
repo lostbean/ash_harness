@@ -17,10 +17,6 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 ash_harness-*.tar
 
-# Dialyzer PLT files.
-*.plt
-.dialyzer/
-
 # Temporary files, for example, from tests.
 /tmp/
 /.direnv

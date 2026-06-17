@@ -115,15 +115,14 @@ Run a turn:
 
 ## Development gates
 
-The repo ships three mix aliases for the local quality matrix:
+The repo ships two mix aliases for the local quality matrix:
 
 | Command         | What it runs                                                   |
 | --------------- | -------------------------------------------------------------- |
-| `mix qa`        | `format --check-formatted` → `compile --warnings-as-errors` → `test` → `credo --strict`. Fail-fast. Mirrors CI's parent-package job. |
-| `mix qa.full`   | `mix qa` plus `mix dialyzer`. The slow gate; run before pushing or in nightly. |
+| `mix qa`        | `format --check-formatted` → `compile --warnings-as-errors` → `test` → `credo --strict`. Fail-fast. Mirrors CI's parent-package job. The `compile --warnings-as-errors` step is the type-check gate — Elixir 1.20's built-in set-theoretic type checker runs during compilation (it replaced Dialyzer). |
 | `mix bench`     | τ-bench airline replay (`benchmarks/tau_bench_airline/`). Capability smoke check, not a code-quality gate. |
 
-All three exit non-zero on the first failing step.
+Both exit non-zero on the first failing step.
 
 ## Testing eval scenarios
 
