@@ -37,10 +37,10 @@
           buildInputs =
             with pkgs;
             [
-              beamMinimal28Packages.elixir_1_19
-              beamMinimal28Packages.erlang
-              beamMinimal28Packages.rebar3
-              beamMinimal28Packages.elixir-ls
+              unstable.beamMinimal28Packages.elixir_1_20
+              unstable.beamMinimal28Packages.erlang
+              unstable.beamMinimal28Packages.rebar3
+              unstable.beamMinimal28Packages.elixir-ls
               # expert-lsp
               rebar3
               nodePackages.prettier

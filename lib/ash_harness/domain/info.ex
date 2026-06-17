@@ -80,7 +80,6 @@ defmodule AshHarness.Domain.Info do
   end
 
   defp spark_dsl?(map) when is_map(map), do: true
-  defp spark_dsl?(%_{}), do: true
 
   defp spark_dsl?(module) when is_atom(module) do
     Code.ensure_loaded?(module) and function_exported?(module, :spark_dsl_config, 0)

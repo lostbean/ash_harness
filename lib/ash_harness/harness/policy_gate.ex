@@ -85,7 +85,6 @@ defmodule AshHarness.Harness.PolicyGate do
   # documents the explicit denial path.
   defp ash_error_class(%Ash.Error.Forbidden{class: class}) when not is_nil(class), do: class
   defp ash_error_class(%Ash.Error.Forbidden{}), do: :forbidden
-  defp ash_error_class(_), do: :unknown
 
   defp can?(actor, %Intent{resource: resource, action: action_name, input: input}) do
     Ash.can?({resource, action_name, input || %{}}, actor)
