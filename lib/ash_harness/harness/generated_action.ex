@@ -306,8 +306,6 @@ defmodule AshHarness.Harness.GeneratedAction do
   defp result_status_for_error(%AshHarness.Errors.ScopeViolation{}), do: :scope_violation
   defp result_status_for_error(%AshHarness.Errors.ReasoningRequired{}), do: :reasoning_required
   defp result_status_for_error(%AshHarness.Errors.MutationLimitExceeded{}), do: :budget_exceeded
-  defp result_status_for_error(%Ash.Error.Invalid{}), do: :validation_failed
-  defp result_status_for_error(%Ash.Error.Forbidden{}), do: :policy_denied
   defp result_status_for_error(_), do: :error
 
   defp emit_executed(agent_module, intent, status, started_at, result_or_error) do

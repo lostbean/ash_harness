@@ -1,10 +1,4 @@
 [
-  # MapSet.new/0 is opaque; dialyzer flags struct-literal initializers
-  # that include it as opaque-mismatches when passed to functions
-  # spec'd to take the struct. The actual call is safe — we're
-  # building the struct's own type.
-  {"lib/ash_harness/harness.ex", :call_without_opaque},
-
   # Defensive `response.data || %{}` fallback against
   # `%Jido.Composer.HITL.ApprovalResponse{}` whose `data` field is
   # spec'd as `map() | nil`. Through our call graph dialyzer infers
@@ -13,12 +7,11 @@
   {"lib/ash_harness/harness.ex", :guard_fail, 340},
   {"lib/ash_harness/harness.ex", :guard_fail, 388},
 
-  # `Ash.can?` may rescue to `:maybe` in the policy_gate; we then
-  # treat `_` as the catch-all denial path even though Dialyzer can
-  # see we exhaustively cover `%Ash.Error.Forbidden{}` through our
-  # specific clauses. Kept for defence in depth.
-  {"lib/ash_harness/harness/policy_gate.ex", :guard_fail, 91},
-  {"lib/ash_harness/harness/policy_gate.ex", :pattern_match_cov},
+  # Defensive `input || %{}` nil-fallback on the `Ash.can?` call.
+  # Through our call graph Dialyzer infers a non-nil map for `input`
+  # and flags the guard, but external callers may construct intents
+  # with a nil input, so we keep the fallback.
+  {"lib/ash_harness/harness/policy_gate.ex", :guard_fail, 90},
 
   # Pre-existing nil-fallback guard on `action.arguments` — through
   # Ash's `Ash.Resource.Info.action/2` callers we always see a list

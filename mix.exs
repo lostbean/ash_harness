@@ -12,7 +12,7 @@ defmodule AshHarness.MixProject do
     [
       app: :ash_harness,
       version: @version,
-      elixir: "~> 1.18",
+      elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),

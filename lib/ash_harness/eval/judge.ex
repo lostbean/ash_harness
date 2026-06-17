@@ -139,8 +139,6 @@ defmodule AshHarness.Eval.Judge do
     Keyword.has_key?(opts, :plug)
   end
 
-  defp stubbed_plug?(_), do: false
-
   # Convert string keys to atoms — but only atoms that already exist
   # (every criterion name has been declared at compile time, so its
   # atom exists by the time the judge runs).
